@@ -17,6 +17,8 @@ dependencies = []
 app = ["streamlit>=1.36"]
 reports = ["openpyxl>=3.1", "reportlab>=4.0"]
 warehouse = ["dbt-duckdb>=1.7", "duckdb>=0.10"]
+snowflake = ["dbt-snowflake>=1.7"]
+orchestration = ["dagster>=1.7", "dagster-webserver>=1.7"]
 dev = ["pytest>=8.0", "ruff>=0.5"]
 
 [tool.setuptools.packages.find]

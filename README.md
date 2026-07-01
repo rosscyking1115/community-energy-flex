@@ -14,11 +14,19 @@ machine 02:30–04:00, charge the EV 01:30–04:30, expected saving £0.12 and
 
 ## Status
 
-**Milestone A — usable vertical slice.** Working today: carbon-intensity client,
-tariff models (flat / Economy 7 / time-of-use), the rule-based optimiser with
-baseline comparison, confidence, and caveats, a Streamlit app, text/Excel/PDF
-reports, and a dbt-on-DuckDB warehouse scaffold. See [docs/ROADMAP.md](docs/ROADMAP.md)
-for the full 3-month plan (Snowflake, Dagster, MLflow, LP optimiser, Power BI).
+**Milestone A — usable vertical slice** *(done)*: carbon-intensity client, tariff
+models (flat / Economy 7 / time-of-use), rule-based optimiser with baseline,
+confidence and caveats, Streamlit app, text/Excel/PDF reports, dbt-on-DuckDB.
+
+**Milestone B — warehouse, orchestration, quality** *(in progress)*: Dagster
+daily pipeline with keep-last-good-schedule fallback, CSV monitoring store
+(`pipeline_runs` / `optimisation_quality` / `data_freshness`), the
+**forecast-vs-actual retro loop** ("did yesterday's plan actually save?"),
+Snowflake as a second dbt target + setup DDL, and extra domain-constraint dbt
+tests.
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the full 3-month plan (MLflow, LP
+optimiser, Power BI still ahead).
 
 ## Quickstart
 
@@ -57,9 +65,11 @@ those three is spelled out in [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
 | Path | What's there |
 |---|---|
-| `src/community_energy_flex/` | Core: `domain/`, `data_sources/`, `optimisation/`, `reporting/` |
+| `src/community_energy_flex/` | Core: `domain/`, `data_sources/`, `optimisation/`, `reporting/`, `pipeline/`, `monitoring/` |
 | `app/streamlit_app.py` | The decision app |
-| `dbt_energy/` | dbt-on-DuckDB warehouse (staging → half-hourly options mart) |
+| `orchestration/` | Dagster assets/jobs/schedules (thin wrappers over `pipeline/`) |
+| `dbt_energy/` | dbt warehouse (DuckDB dev + Snowflake target), staging → options mart |
+| `warehouse/` | Snowflake bootstrap DDL |
 | `tests/` | Optimiser invariants, confidence, tariffs, reports, API parsing |
 | `docs/` | Product thesis, data sources, methodology, safety & privacy, roadmap |
 
