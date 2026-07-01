@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Testing / tooling
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# dbt / DuckDB
+dbt_energy/target/
+dbt_energy/dbt_packages/
+dbt_energy/logs/
+*.duckdb
+*.duckdb.wal
+
+# MLflow (later)
+mlruns/
+
+# Reports & local artifacts
+reports/*.xlsx
+reports/*.pdf
+
+# Secrets / env
+.env
+*.local
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

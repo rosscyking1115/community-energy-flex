@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "community-energy-flexibility-os"
+version = "0.1.0"
+description = "Decision-support tool that recommends when to run flexible electricity loads to cut cost and carbon."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Leaf Feng" }]
+keywords = ["energy", "carbon", "flexibility", "demand-response", "optimisation"]
+dependencies = []
+
+[project.optional-dependencies]
+app = ["streamlit>=1.36"]
+reports = ["openpyxl>=3.1", "reportlab>=4.0"]
+warehouse = ["dbt-duckdb>=1.7", "duckdb>=0.10"]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

@@ -1,0 +1,15 @@
+# DuckDB-first: the same models run on Snowflake later by adding a target.
+# Point dbt at this file with:  set DBT_PROFILES_DIR=%CD%\dbt_energy  (Windows)
+dbt_energy:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: energy.duckdb
+      threads: 4
+    # snowflake:            # enabled in a later milestone
+    #   type: snowflake
+    #   account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+    #   database: ENERGY_FLEXIBILITY_OS
+    #   warehouse: COMPUTE_WH
+    #   schema: MARTS

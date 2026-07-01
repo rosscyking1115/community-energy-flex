@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Raw half-hourly inputs. For the MVP these are dbt seeds; on Snowflake they
+      become the RAW schema tables loaded by the Dagster pipeline.
+    tables:
+      - name: seed_carbon_intensity
+      - name: seed_tariff_rates

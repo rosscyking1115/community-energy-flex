@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: fct_half_hourly_energy_options
+    description: Half-hourly cost and carbon per kWh - the optimiser's option set.
+    columns:
+      - name: slot_index
+        description: Half-hour slot 0..47.
+        data_tests:
+          - not_null
+          - unique
+      - name: carbon_gco2_per_kwh
+        data_tests:
+          - not_null
+      - name: cost_per_kwh_p
+        data_tests:
+          - not_null
