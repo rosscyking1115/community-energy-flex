@@ -1,0 +1,10 @@
+# Streamlit theme - matches the Power BI dashboard palette for a consistent
+# product look. Native theming via config (no CSS hacks), per the
+# developing-with-streamlit guidance.
+[theme]
+base = "light"
+primaryColor = "#1B7A5A"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F7F6"
+textColor = "#2D3748"
+font = "sans serif"

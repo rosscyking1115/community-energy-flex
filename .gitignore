@@ -37,7 +37,8 @@ powerbi/data/
 .env
 *.local
 
-# OS / editor
+# OS / editor / local tooling
 .DS_Store
 .idea/
 .vscode/
+.claude/

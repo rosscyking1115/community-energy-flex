@@ -10,7 +10,7 @@ time directly.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, time
 from enum import StrEnum
 
 SLOTS_PER_DAY = 48
@@ -21,6 +21,19 @@ def slot_to_time(index: int) -> str:
     """Render a slot boundary as ``HH:MM`` (24:00 for the end of the day)."""
     total_minutes = index * SLOT_MINUTES
     return f"{total_minutes // 60:02d}:{total_minutes % 60:02d}"
+
+
+def slot_to_clock(index: int) -> time:
+    """Clock time at the start of a slot, for the UI's time pickers. Slot 48
+    (the end-of-day boundary) wraps to 00:00 - callers that mean "finish by end
+    of day" treat 00:00 as slot 48."""
+    minutes = (index % SLOTS_PER_DAY) * SLOT_MINUTES
+    return time(hour=minutes // 60, minute=minutes % 60)
+
+
+def clock_to_slot(value: time) -> int:
+    """Slot index containing a clock time (rounded down to the half hour)."""
+    return value.hour * 2 + (1 if value.minute >= 30 else 0)
 
 
 class Objective(StrEnum):
