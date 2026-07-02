@@ -21,11 +21,15 @@ ownership, likely income level, EV ownership, and work patterns.
 - Never claim guaranteed savings; show caveats on every recommendation.
 - Do not shame high-energy users.
 
-## RBAC — honest scope
+## RBAC — enforced in two layers
 
-> [!WARNING]
-> The MVP's Streamlit role handling is **presentation-level only** (it hides
-> pages/data by role in session state). It is *not* a security boundary and does
-> not enforce cross-household isolation. Real isolation arrives in Milestone D
-> with OIDC login, Snowflake row-access policies, and audit logging. Until then,
-> do not treat multi-household separation as guaranteed.
+Access control is enforced by the tested `auth/` package (row-level scoping +
+permission gate + audit trail) and, at the warehouse, by Snowflake row-access
+policies — so a household never sees another household's data, even via a direct
+SQL connection. Full model, roles, and OIDC config: [RBAC_MODEL.md](RBAC_MODEL.md).
+
+> [!NOTE]
+> The application scoping and audit are enforced and tested today. The Snowflake
+> row-access policies and OIDC login are written and documented; they activate
+> once a Snowflake account and identity provider are connected. Until then, run
+> the app as single-tenant demo software.

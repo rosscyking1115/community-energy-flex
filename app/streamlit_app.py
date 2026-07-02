@@ -16,6 +16,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from community_energy_flex.auth import Permission, Role, User, can
 from community_energy_flex.data_sources.carbon_intensity import CarbonIntensityClient
 from community_energy_flex.data_sources.carbon_intensity import carbon_curve as curve_from_slots
 from community_energy_flex.demo import sample_carbon_curve, sample_tariffs, sample_tasks
@@ -125,8 +126,40 @@ _TASK_COLUMN_CONFIG = {
 }
 
 
+_ROLE_LABELS = {r: r.value.replace("_", " ").title() for r in Role}
+
+
+def _resolve_user() -> User:
+    """The signed-in user. Uses OIDC (st.user) when configured, otherwise a demo
+    role picker so the RBAC behaviour can be explored without a provider."""
+    st.subheader("Account")
+    try:
+        oidc = getattr(st, "user", None)
+        logged_in = bool(oidc is not None and getattr(oidc, "is_logged_in", False))
+    except Exception:  # noqa: BLE001 - auth provider not configured / unavailable
+        oidc, logged_in = None, False
+    if logged_in:
+        st.caption(f"Signed in as {oidc.email}")
+        if st.button("Log out"):
+            st.logout()
+        return User(user_id=oidc.email, role=Role.HOUSEHOLD, community_id="C1")
+
+    role = st.selectbox(
+        "Demo role", list(Role), index=1, format_func=lambda r: _ROLE_LABELS[r],
+        help="Try each role to see what it can and can't do.",
+    )
+    st.caption(f"Exploring as **{_ROLE_LABELS[role]}** (demo)")
+    try:
+        if "auth" in st.secrets and st.button("Sign in with your account"):
+            st.login()
+    except Exception:  # noqa: BLE001 - no secrets file / OIDC not set up
+        pass
+    return User(user_id=f"demo-{role}", role=role, community_id="C1")
+
+
 # --- Sidebar: set-up --------------------------------------------------------
 with st.sidebar:
+    user = _resolve_user()
     st.header("Set-up")
     tariffs = sample_tariffs()
     tariff_name = st.selectbox(
@@ -185,13 +218,19 @@ with st.form("tasks_form"):
         st.session_state.task_frame,
         column_config=_TASK_COLUMN_CONFIG,
         num_rows="dynamic",
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         key="editor",
     )
     submitted = st.form_submit_button("Find the best times", type="primary")
 
-if submitted:
+if submitted and not can(user.role, Permission.RUN_OPTIMISER):
+    st.info(
+        f"The **{_ROLE_LABELS[user.role]}** role can view reports but can't run the "
+        "optimiser. Switch to the Household role (demo) to try it.",
+        icon=":material/lock:",
+    )
+elif submitted:
     tasks, errors = _frame_to_tasks(edited)
     for err in errors:
         st.error(err, icon=":material/error:")
@@ -230,7 +269,7 @@ if submitted:
                     for ln in summary.lines
                 ]
             ),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
 
