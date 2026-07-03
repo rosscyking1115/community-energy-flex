@@ -22,7 +22,7 @@ orchestration = ["dagster>=1.7", "dagster-webserver>=1.7"]
 optim = ["pulp>=2.7"]
 tracking = ["mlflow>=2.9"]
 api = ["fastapi>=0.110", "uvicorn[standard]>=0.29"]
-dev = ["pytest>=8.0", "ruff>=0.5", "pulp>=2.7", "httpx>=0.27"]
+dev = ["pytest>=8.0", "ruff>=0.5", "pulp>=2.7", "httpx>=0.27", "fastapi>=0.110"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
