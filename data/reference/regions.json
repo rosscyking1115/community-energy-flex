@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "description": "UK regions the app serves. GB regions use the Carbon Intensity API (live forecast) and Octopus Agile (agile_gsp letter). Northern Ireland uses EirGrid actuals (typical-day profile) and has no dynamic tariff. agile_gsp letters are the standard GSP groups; validate against live Octopus tariff codes when wiring the Agile endpoint.",
+    "sources": [
+      "Carbon Intensity API (NESO / Univ. of Oxford) - api.carbonintensity.org.uk",
+      "EirGrid Smart Grid Dashboard - smartgriddashboard.com (NI carbon)",
+      "Octopus Energy API - api.octopus.energy (Agile)"
+    ]
+  },
+  "regions": [
+    {"id": "north-scotland", "name": "North Scotland", "nation": "Scotland", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 1, "agile_gsp": "P", "postcode_prefixes": ["AB", "IV", "KW", "PA", "PH", "HS", "ZE"]},
+    {"id": "south-scotland", "name": "South Scotland", "nation": "Scotland", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 2, "agile_gsp": "N", "postcode_prefixes": ["DD", "DG", "EH", "FK", "G", "KA", "KY", "ML", "TD"]},
+    {"id": "north-west-england", "name": "North West England", "nation": "England", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 3, "agile_gsp": "G", "postcode_prefixes": ["BB", "BL", "CA", "FY", "LA", "OL", "PR", "WN"]},
+    {"id": "north-east-england", "name": "North East England", "nation": "England", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 4, "agile_gsp": "F", "postcode_prefixes": ["DH", "DL", "NE", "SR", "TS"]},
+    {"id": "yorkshire", "name": "Yorkshire", "nation": "England", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 5, "agile_gsp": "M", "postcode_prefixes": ["BD", "DN", "HD", "HG", "HU", "HX", "LS", "S", "WF", "YO"]},
+    {"id": "north-wales-merseyside", "name": "North Wales & Merseyside", "nation": "Wales", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 6, "agile_gsp": "D", "postcode_prefixes": ["CH", "CW", "L", "LL", "SY"]},
+    {"id": "south-wales", "name": "South Wales", "nation": "Wales", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 7, "agile_gsp": "K", "postcode_prefixes": ["CF", "NP", "SA"]},
+    {"id": "west-midlands", "name": "West Midlands", "nation": "England", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 8, "agile_gsp": "E", "postcode_prefixes": ["B", "CV", "DY", "HR", "TF", "WR", "WS", "WV"]},
+    {"id": "east-midlands", "name": "East Midlands", "nation": "England", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 9, "agile_gsp": "B", "postcode_prefixes": ["DE", "LE", "LN", "NG", "NN"]},
+    {"id": "east-england", "name": "East England", "nation": "England", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 10, "agile_gsp": "A", "postcode_prefixes": ["AL", "CB", "CM", "CO", "IP", "NR", "PE", "SG", "SS"]},
+    {"id": "south-west-england", "name": "South West England", "nation": "England", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 11, "agile_gsp": "L", "postcode_prefixes": ["BA", "BS", "DT", "EX", "GL", "PL", "TA", "TQ", "TR"]},
+    {"id": "south-england", "name": "South England", "nation": "England", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 12, "agile_gsp": "H", "postcode_prefixes": ["BH", "GU", "PO", "RG", "SO", "SP"]},
+    {"id": "london", "name": "London", "nation": "England", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 13, "agile_gsp": "C", "postcode_prefixes": ["E", "EC", "N", "NW", "SE", "SW", "W", "WC", "EN", "HA", "IG", "RM", "UB"]},
+    {"id": "south-east-england", "name": "South East England", "nation": "England", "carbon_source": "gb_carbon_intensity", "carbon_region_id": 14, "agile_gsp": "J", "postcode_prefixes": ["BN", "CT", "DA", "ME", "RH", "TN"]},
+    {"id": "northern-ireland", "name": "Northern Ireland", "nation": "Northern Ireland", "carbon_source": "eirgrid_ni", "carbon_region_id": null, "agile_gsp": null, "postcode_prefixes": ["BT"], "notes": "Carbon = typical-day profile from EirGrid actuals (no live forecast). Tariffs: Economy 7 / flat / manual only (no dynamic tariff in NI)."}
+  ]
+}
