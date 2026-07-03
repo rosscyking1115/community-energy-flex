@@ -28,6 +28,14 @@ class ApplianceOut(BaseModel):
     noise_sensitive: bool = False
 
 
+class AgileTariffOut(BaseModel):
+    region: str
+    product: str
+    day: str
+    unit_rates_p: list[float]  # 48 half-hourly p/kWh
+    source: str = "live_agile"
+
+
 class TariffSpec(BaseModel):
     kind: Literal["flat", "economy7", "agile", "manual_half_hourly"] = "flat"
     standing_charge_p: float = 0.0

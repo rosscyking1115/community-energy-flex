@@ -54,6 +54,28 @@ def test_optimise_returns_a_schedule():
     assert "planning recommendations only" in data["safety_statement"]
 
 
+def test_agile_endpoint_gb_and_ni():
+    gb = client.get("/v1/tariffs/agile/london")
+    assert gb.status_code == 200
+    assert len(gb.json()["unit_rates_p"]) == 48
+    ni = client.get("/v1/tariffs/agile/northern-ireland")
+    assert ni.status_code == 400  # no Agile in NI
+
+
+def test_optimise_with_agile_tariff_fetches_prices():
+    body = {
+        "region_id": "london",
+        "tariff": {"kind": "agile"},  # prices fetched server-side
+        "tasks": [
+            {"name": "EV", "device_type": "EV charge", "energy_kwh": 40.0,
+             "duration_hours": 6.0, "latest": "07:30"},
+        ],
+    }
+    resp = client.post("/v1/optimise", json=body)
+    assert resp.status_code == 200
+    assert len(resp.json()["tasks"]) == 1
+
+
 def test_optimise_rejects_impossible_window():
     body = {
         "region_id": "london",
