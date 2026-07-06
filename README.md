@@ -48,8 +48,9 @@ display rather than as something to adopt. The interesting parts, for a reviewer
   TypeScript, so the API and the front end can't silently drift.
 - **Graceful degradation by design** — every live feed is TTL-cached with a
   last-good / sample fallback, so an upstream outage never takes the app down.
-- **It closes the loop** — a forecast-vs-actual **retro** ("did yesterday's plan
-  actually save?") measures realised vs forecast savings, not just predicted ones.
+- **It closes the loop** — a [forecast-vs-actual **retro**](docs/RETRO.md) ("did
+  yesterday's plan actually save?") measures realised vs forecast savings, not just
+  predicted ones. Worst case in the demo still saved; on average, 95% realised.
 
 ## Live
 
@@ -162,6 +163,7 @@ spelled out in [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 |---|---|
 | [PRODUCT_THESIS](docs/PRODUCT_THESIS.md) · [ROADMAP](docs/ROADMAP.md) | Why it exists; the build plan |
 | [CASE_STUDY](docs/CASE_STUDY.md) | Worked community-centre example (start here) |
+| [RETRO](docs/RETRO.md) | Forecast-vs-actual loop — "did yesterday's plan actually save?" |
 | [METHODOLOGY](docs/METHODOLOGY.md) | Baseline, cost/carbon maths, confidence |
 | [ARCHITECTURE](docs/ARCHITECTURE.md) | Layers, deep-module review, ADRs |
 | [DEPLOYMENT](docs/DEPLOYMENT.md) | API on Fly.io + web on Vercel |
