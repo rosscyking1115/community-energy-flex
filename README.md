@@ -12,6 +12,8 @@
 > (see [Why this exists](#why-this-exists)). Built to be read: live-API integration,
 > a scheduling/optimisation engine, a typed contract, and a front end.
 
+**▶ [Live demo](https://after-midnight-beta.vercel.app/)** · [API docs](https://community-energy-flex-api.fly.dev/docs) · [worked example](docs/CASE_STUDY.md)
+
 It doesn't just show *"carbon is low at 02:00."* It says *"run the washing machine
 02:30–04:00, charge the EV 01:30–04:30, expected saving £0.12 and 0.14 kg CO₂,
 high confidence"* — with the assumptions and caveats attached.
@@ -51,9 +53,10 @@ display rather than as something to adopt. The interesting parts, for a reviewer
 
 ## Live
 
-The engine runs behind a public, keyless API (FastAPI on Fly.io):
+- **Web app:** [after-midnight-beta.vercel.app](https://after-midnight-beta.vercel.app/) (Next.js on Vercel)
+- **API:** [community-energy-flex-api.fly.dev](https://community-energy-flex-api.fly.dev) — [OpenAPI docs](https://community-energy-flex-api.fly.dev/docs) (FastAPI on Fly.io, keyless)
 
-**`https://community-energy-flex-api.fly.dev`** — [OpenAPI docs](https://community-energy-flex-api.fly.dev/docs)
+The API is callable directly:
 
 ```bash
 # tonight's cleanest/cheapest window for a load in London, from live data
@@ -183,7 +186,7 @@ See [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) for fields and licensing.
 |---|---|
 | Engine, warehouse, Streamlit app, Power BI, RBAC | Done (v0.1.0) |
 | Public API (FastAPI) | **Live** on Fly.io |
-| Web front end (Next.js) | Built; Vercel deploy pending |
+| Web front end (Next.js) | **Live** on Vercel |
 
 Scope is intentionally **capped** — this is a portfolio build, not a roadmap to a
 product. UK region coverage (all 14 GB GSP regions + Northern Ireland) is complete;
