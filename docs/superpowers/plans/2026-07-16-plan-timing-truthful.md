@@ -127,7 +127,9 @@ describe("widen", () => {
   });
 
   it("splits across both edges when neither alone suffices", () => {
-    expect(widen({ earliest: 1, finishBy: 2 }, 4)).toEqual({ earliest: 0, finishBy: 5 });
+    // Pull earliest 1 -> 0 (gains 1 slot), still 2 short, so extend finishBy 2 -> 4.
+    // The result is exactly durationSlots wide: widening is minimal, never generous.
+    expect(widen({ earliest: 1, finishBy: 2 }, 4)).toEqual({ earliest: 0, finishBy: 4 });
   });
 
   it("returns the window unchanged when it already fits", () => {
