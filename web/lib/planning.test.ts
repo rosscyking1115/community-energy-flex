@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { defaultBaseline, fits, windowForChip } from "@/lib/planning";
+import {
+  classifyApiError,
+  defaultBaseline,
+  ERROR_COPY,
+  fits,
+  fittingChips,
+  windowForChip,
+  type ErrorKind,
+} from "@/lib/planning";
 
 describe("fits", () => {
   it("accepts an exact fit", () => {
@@ -74,7 +82,22 @@ describe("defaultBaseline", () => {
   });
 });
 
-import { classifyApiError } from "@/lib/planning";
+describe("defaultBaseline invariant", () => {
+  it("always returns a legal preferred_start for any window that fits", () => {
+    // Mirrors domain/models.py: earliest <= preferred_start <= latest_finish - duration_slots.
+    for (let earliest = 0; earliest < 48; earliest++) {
+      for (let finishBy = earliest + 1; finishBy <= 48; finishBy++) {
+        for (const d of [1, 2, 4, 5, 12, 16]) {
+          const win = { earliest, finishBy };
+          if (!fits(win, d)) continue;
+          const b = defaultBaseline(win, d);
+          expect(b).toBeGreaterThanOrEqual(earliest);
+          expect(b).toBeLessThanOrEqual(finishBy - d);
+        }
+      }
+    }
+  });
+});
 
 describe("classifyApiError", () => {
   it("classifies the reported bug as a too-small window, not a midnight wrap", () => {
@@ -116,8 +139,6 @@ describe("classifyApiError", () => {
   });
 });
 
-import { fittingChips } from "@/lib/planning";
-
 describe("fittingChips", () => {
   it("offers every preset window to a short load", () => {
     expect(fittingChips(false, 4)).toEqual(["anytime", "early", "daytime"]);
@@ -143,5 +164,18 @@ describe("fittingChips", () => {
 
   it("never offers custom", () => {
     expect(fittingChips(false, 4)).not.toContain("custom");
+  });
+});
+
+describe("ERROR_COPY", () => {
+  it("covers every error kind with all four strings", () => {
+    const kinds: ErrorKind[] = ["window_too_small", "baseline_outside", "infeasible", "forecast_unavailable", "generic"];
+    for (const k of kinds) {
+      const c = ERROR_COPY[k];
+      expect(c.eyebrow.length).toBeGreaterThan(0);
+      expect(c.heading.length).toBeGreaterThan(0);
+      expect(c.body.length).toBeGreaterThan(0);
+      expect(c.cta.length).toBeGreaterThan(0);
+    }
   });
 });

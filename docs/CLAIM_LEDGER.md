@@ -5,7 +5,7 @@ This ledger defines which public statements the repository can support at the v0
 | Claim | Status | Evidence | Required wording / boundary |
 |---|---|---|---|
 | The engine recommends feasible windows for flexible tasks. | Supported | Optimiser invariant tests and domain constraints | Recommendation, not appliance control. |
-| Recommendations are compared with a baseline. | Supported | `preferred_start` baseline implementation and tests | Savings are estimates relative to that explicit baseline. |
+| Recommendations are compared with a baseline. | Supported | `preferred_start` baseline implementation and tests | The baseline defaults to a typical 19:00 start, clamped into the chosen window when 19:00 doesn't fit, and is user-settable only under Custom. |
 | GB responses can use a live carbon forecast. | Supported, conditional | Carbon provider and API provenance tests | Say “live” only when `is_live_forecast` is true for that response. |
 | Northern Ireland has live forecast coverage. | Not supported | Region capability and fallback contract | It uses a labelled EirGrid-derived typical profile. |
 | The service is always backed by live data. | Not supported | Explicit fallback paths | Show the source label and fallback reason. |

@@ -11,6 +11,7 @@ import {
   CHIPS,
   classifyApiError,
   defaultBaseline,
+  ERROR_COPY,
   fits,
   fittingChips,
   windowForChip,
@@ -139,7 +140,12 @@ export default function PlanPage() {
     );
   }
 
-  const blockingLoad = added.find((a) => !fits({ earliest: a.earliest, finishBy: a.finishBy }, a.durSlots));
+  const blockingLoad = added.find(
+    (a) =>
+      !fits({ earliest: a.earliest, finishBy: a.finishBy }, a.durSlots) ||
+      a.preferred < a.earliest ||
+      a.preferred > a.finishBy - a.durSlots,
+  );
   const canOpt = !!regionId && !!tariff && added.length > 0 && !blockingLoad;
   const optHint = !regionId
     ? "Pick a region to begin."
@@ -300,10 +306,9 @@ export default function PlanPage() {
                             <button
                               key={c.id}
                               type="button"
-                              disabled={disabled}
+                              aria-disabled={disabled}
                               aria-pressed={a.chip === c.id}
-                              title={disabled ? `${a.name} needs ${a.duration_hours}h; ${c.label} is shorter.` : undefined}
-                              onClick={() => chooseChip(a.key, c.id)}
+                              onClick={() => { if (disabled) return; chooseChip(a.key, c.id); }}
                               style={{
                                 padding: "6px 12px",
                                 borderRadius: 999,
@@ -314,7 +319,13 @@ export default function PlanPage() {
                                 color: disabled ? "var(--slate-mute)" : a.chip === c.id ? "var(--paper)" : "var(--ink)",
                               }}
                             >
-                              {c.label}
+                              <span style={{ display: "block" }}>{c.label}</span>
+                              {c.id !== "custom" && (
+                                <span style={{ display: "block", fontSize: 11, opacity: 0.7 }}>
+                                  {slotToClock(w.earliest)}–{slotToClock(w.finishBy)}
+                                </span>
+                              )}
+                              {disabled && <span className="visually-hidden"> — unavailable: {a.name} needs {a.duration_hours}h, {c.label} is shorter.</span>}
                             </button>
                           );
                         })}
@@ -323,19 +334,21 @@ export default function PlanPage() {
                         <>
                           <TimeField label="Earliest start" value={a.earliest} opts={START_OPTS} onChange={(v) => setTime(a.key, "earliest", v)} />
                           <TimeField label="Finish by" value={a.finishBy} opts={FINISH_OPTS} onChange={(v) => setTime(a.key, "finishBy", v)} />
-                          <TimeField
-                            label="Usual start (baseline)"
-                            value={a.preferred}
-                            opts={START_OPTS.filter((o) => o.v >= a.earliest && o.v <= a.finishBy - a.durSlots)}
-                            onChange={(v) => setTime(a.key, "preferred", v)}
-                          />
+                          {fits({ earliest: a.earliest, finishBy: a.finishBy }, a.durSlots) && (
+                            <TimeField
+                              label="Usual start (baseline)"
+                              value={a.preferred}
+                              opts={START_OPTS.filter((o) => o.v >= a.earliest && o.v <= a.finishBy - a.durSlots)}
+                              onChange={(v) => setTime(a.key, "preferred", v)}
+                            />
+                          )}
                         </>
                       )}
                       {!fits({ earliest: a.earliest, finishBy: a.finishBy }, a.durSlots) && (
                         <p role="status" style={{ gridColumn: "1 / -1", margin: "6px 0 0", fontSize: 13, color: "var(--ink)" }}>
                           {a.earliest >= a.finishBy
                             ? "Finish-by must be after earliest start. We plan a single midnight-to-midnight day, so a window that crosses midnight isn't supported yet."
-                            : `A ${a.duration_hours}-hour ${a.name.toLowerCase()} needs at least a ${a.duration_hours}-hour window — you've allowed ${((a.finishBy - a.earliest) / 2).toFixed(1)} hours.`}
+                            : `${a.name} needs at least a ${a.duration_hours}-hour window — you've allowed ${((a.finishBy - a.earliest) / 2).toFixed(1)} hours.`}
                           {(() => {
                             const ok = fittingChips(a.noiseSensitive, a.durSlots);
                             if (!ok.length) return " No preset window is long enough for this load.";
@@ -398,41 +411,17 @@ export default function PlanPage() {
       {phase === "error" && (
         <div role="alert" style={{ animation: "cef-fade .3s ease both", ...panel, borderLeft: "4px solid var(--filament)", padding: 26, maxWidth: 660 }}>
           <p className="mono" style={{ fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--slate)", margin: "0 0 10px" }}>
-            {errorKind === "window_too_small"
-              ? "Window too short"
-              : errorKind === "baseline_outside"
-                ? "Baseline outside window"
-                : errorKind === "infeasible"
-                  ? "No feasible start"
-                  : errorKind === "forecast_unavailable"
-                    ? "Forecast unavailable"
-                    : "Something went wrong"}
+            {ERROR_COPY[errorKind].eyebrow}
           </p>
           <h2 style={{ fontWeight: 700, fontSize: 22, margin: "0 0 10px", letterSpacing: "-0.01em" }}>
-            {errorKind === "window_too_small"
-              ? "One of your loads needs a longer window."
-              : errorKind === "baseline_outside"
-                ? "That usual start isn't inside the window."
-                : errorKind === "infeasible"
-                  ? "We couldn't fit that load into its window."
-                  : errorKind === "forecast_unavailable"
-                    ? "We can't reach the forecast right now."
-                    : "We couldn't build the plan."}
+            {ERROR_COPY[errorKind].heading}
           </h2>
           <p style={{ margin: "0 0 18px", fontSize: 15, lineHeight: 1.55, color: "var(--ink-soft-2)", maxWidth: "58ch" }}>
-            {errorKind === "window_too_small"
-              ? "The run window is shorter than the load takes. Go back and choose a longer window — the form will suggest a preset that fits."
-              : errorKind === "baseline_outside"
-                ? "The usual start has to be a time the load could actually run within the window you set. Go back and move it inside, or choose a longer window."
-                : errorKind === "infeasible"
-                  ? "There's no start time inside that window where the load finishes in time. Try a wider window."
-                  : errorKind === "forecast_unavailable"
-                    ? "The carbon or price feed didn't respond. Nothing is wrong with your plan — try again shortly."
-                    : "Something went wrong building the plan. Try again, or change the loads."}
+            {ERROR_COPY[errorKind].body}
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button type="button" onClick={backToForm} style={ctaPrimary}>
-              {errorKind === "window_too_small" || errorKind === "baseline_outside" || errorKind === "infeasible" ? "Fix the times" : "Back to my plan"}
+              {ERROR_COPY[errorKind].cta}
             </button>
           </div>
         </div>
@@ -485,7 +474,7 @@ function Results({ result, region, forecast, windows, baselines, tariffLabel, sh
   const basis = `${tariffLabel} · ${source}`;
   const inWin = (i: number) => windows.some((w) => i >= w.s && i < w.e);
   const caveats = [
-    "Savings are versus your own usual start time, not a best case. Change a baseline and the figures update.",
+    "Savings are versus a typical 19:00 start, moved inside your chosen window when 19:00 doesn't fit — not a best case.",
     region && !region.supports_live_forecast
       ? "Northern Ireland uses a typical-day profile, so treat window timings as guidance rather than a same-day forecast."
       : result.is_fallback
@@ -515,7 +504,7 @@ function Results({ result, region, forecast, windows, baselines, tariffLabel, sh
         <div>
           <p className="mono" style={{ fontSize: 11.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--slate)", margin: "0 0 8px" }}>Move every load and you save, tomorrow</p>
           <p className="mono" style={{ margin: 0, fontWeight: 600, fontSize: "clamp(30px,5.4vw,48px)", lineHeight: 1, letterSpacing: "-0.02em" }}>{money(result.total_cost_saving_p)} <span style={{ color: "var(--slate)", fontWeight: 500 }}>&amp;</span> {grams(result.total_carbon_saving_g)}</p>
-          <p style={{ margin: "9px 0 0", fontSize: 13, color: "var(--slate)" }}>vs your usual timings · {basis}</p>
+          <p style={{ margin: "9px 0 0", fontSize: 13, color: "var(--slate)" }}>vs a typical start · {basis}</p>
         </div>
         <button type="button" onClick={onBack} style={ctaGhost}>Adjust</button>
       </div>
@@ -556,7 +545,7 @@ function Results({ result, region, forecast, windows, baselines, tariffLabel, sh
         <button type="button" onClick={onToggleTable} aria-expanded={showTable} style={ctaGhostSm}>{showTable ? "Hide data table" : "Show data table"}</button>
       </div>
       <p style={{ margin: "0 0 14px", fontSize: 13.5, color: "var(--ink-soft-2)", maxWidth: "66ch" }}>
-        Dark bars are grid carbon each half-hour — taller and denser means heavier. The thin line is price. Amber brackets mark your recommended windows; the tick marked <em>usual</em> is your baseline start. Intensity is never shown in colour.
+        Dark bars are grid carbon each half-hour — taller and denser means heavier. The thin line is price. Amber brackets mark your recommended windows; the tick marked <em>usual</em> is the baseline start. Intensity is never shown in colour.
       </p>
 
       {forecast && (

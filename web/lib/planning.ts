@@ -93,6 +93,40 @@ export type ErrorKind =
   | "forecast_unavailable"
   | "generic";
 
+/** The four strings each failure shows, in one place so they cannot drift apart. */
+export const ERROR_COPY: Record<ErrorKind, { eyebrow: string; heading: string; body: string; cta: string }> = {
+  window_too_small: {
+    eyebrow: "Window too short",
+    heading: "One of your loads needs a longer window.",
+    body: "The run window is shorter than the load takes. Go back and choose a longer window.",
+    cta: "Fix the times",
+  },
+  baseline_outside: {
+    eyebrow: "Baseline outside window",
+    heading: "That usual start isn't inside the window.",
+    body: "The usual start has to be a time the load could actually run within the window you set. Go back and move it inside, or choose a longer window.",
+    cta: "Fix the times",
+  },
+  infeasible: {
+    eyebrow: "No feasible start",
+    heading: "We couldn't fit that load into its window.",
+    body: "There's no start time inside that window where the load finishes in time. Try a wider window.",
+    cta: "Fix the times",
+  },
+  forecast_unavailable: {
+    eyebrow: "Forecast unavailable",
+    heading: "We can't reach the forecast right now.",
+    body: "The carbon or price feed didn't respond. Nothing is wrong with your plan — try again shortly.",
+    cta: "Back to my plan",
+  },
+  generic: {
+    eyebrow: "Something went wrong",
+    heading: "We couldn't build the plan.",
+    body: "Something went wrong building the plan. Try again, or change the loads.",
+    cta: "Back to my plan",
+  },
+};
+
 /** FastAPI details are a string (our HTTPException) or an array (request validation). */
 function detailToText(detail: unknown): string {
   if (typeof detail === "string") return detail;
