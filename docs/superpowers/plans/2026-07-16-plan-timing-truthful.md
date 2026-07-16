@@ -929,6 +929,171 @@ git commit -m "fix(web): address verification findings on the plan form"
 
 ---
 
+---
+
+### Task 7: Replace Widen with chip suggestions (added after Task 6 verification)
+
+**Why this exists:** Task 6 drove the real app and found two flaws in this plan's own design.
+
+1. **Minimal widen guarantees a worthless plan.** "Widen to 11:00–13:00" produces a window exactly
+   `durationSlots` wide, so there is exactly ONE feasible placement: the run window equals the baseline and
+   the saving is always zero. The live result read `Run 11:00-13:00 instead of 11:00-13:00.` — `0p & 0 g`.
+2. **Widen returns nonsense on an inverted window.** For 22:00→03:00 it offered "Widen to 01:00–03:00",
+   discarding the user's 22:00 start, directly beneath a message saying midnight-crossing isn't supported.
+
+Ross's decision: **drop the Widen button and point at the chips instead**, and make the inverted-window
+rejection explicit. Dropping the button leaves `widen` with no caller, so it goes too — dead code, not
+speculative inventory for sub-project C, which needs different (ring-based) logic anyway.
+
+**Files:**
+- Modify: `web/lib/planning.ts`
+- Modify: `web/lib/planning.test.ts`
+- Modify: `web/app/plan/page.tsx`
+
+**Interfaces:**
+- Consumes: `Win`, `fits`, `Chip`, `CHIPS`, `windowForChip` (Tasks 1-2).
+- Produces: `export function fittingChips(noiseSensitive: boolean, durationSlots: number): Chip[]`.
+- **Removes:** `export function widen(...)` — delete the function, its doc comment, and its 5 tests.
+
+- [ ] **Step 1: Write the failing tests**
+
+In `web/lib/planning.test.ts`, DELETE the entire `describe("widen", ...)` block (5 tests), and remove `widen`
+from the `@/lib/planning` import. Then append:
+
+```ts
+import { fittingChips } from "@/lib/planning";
+
+describe("fittingChips", () => {
+  it("offers every preset window to a short load", () => {
+    expect(fittingChips(false, 4)).toEqual(["anytime", "early", "daytime"]);
+  });
+
+  it("drops early hours for an 8-hour slow cooker", () => {
+    // Early hours is 00:00-07:00 = 14 slots; the load needs 16.
+    expect(fittingChips(false, 16)).toEqual(["anytime", "daytime"]);
+  });
+
+  it("offers every preset window to a short noise-sensitive load", () => {
+    expect(fittingChips(true, 4)).toEqual(["anytime", "early", "daytime"]);
+  });
+
+  it("offers only anytime to a 17-hour load", () => {
+    expect(fittingChips(false, 34)).toEqual(["anytime"]);
+  });
+
+  it("offers nothing when a noise-sensitive load outlasts every window", () => {
+    // Anytime for a noise-sensitive load is 07:00-23:00 = 32 slots.
+    expect(fittingChips(true, 34)).toEqual([]);
+  });
+
+  it("never offers custom", () => {
+    expect(fittingChips(false, 4)).not.toContain("custom");
+  });
+});
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+```bash
+cd web && npx vitest run
+```
+
+Expected: FAIL — `"fittingChips" is not exported by "lib/planning.ts"`.
+
+- [ ] **Step 3: Make the wrap rejection explicit and add `fittingChips`**
+
+In `web/lib/planning.ts`, replace `fits` with:
+
+```ts
+/**
+ * Can `durationSlots` fit between `earliest` and `finishBy`?
+ *
+ * A window whose finish is not after its start crosses midnight, which the engine
+ * cannot express — rejected explicitly rather than relying on the subtraction
+ * going negative.
+ */
+export function fits(win: Win, durationSlots: number): boolean {
+  if (win.finishBy <= win.earliest) return false;
+  return win.finishBy - win.earliest >= durationSlots;
+}
+```
+
+DELETE the entire `widen` function and its doc comment.
+
+Append:
+
+```ts
+/**
+ * The preset chips whose window can actually hold this load, in CHIPS order.
+ *
+ * Used to suggest a way out when a custom window is too short. We point at
+ * windows we already know are good rather than inventing a minimal one: the
+ * smallest window that fits a load has exactly one placement, so it would
+ * always produce a plan that recommends the baseline and saves nothing.
+ */
+export function fittingChips(noiseSensitive: boolean, durationSlots: number): Chip[] {
+  return CHIPS.map((c) => c.id)
+    .filter((id) => id !== "custom")
+    .filter((id) => fits(windowForChip(id, noiseSensitive), durationSlots));
+}
+```
+
+- [ ] **Step 4: Run the tests to verify they pass**
+
+```bash
+cd web && npx vitest run
+```
+
+Expected: PASS — 29 tests passed (28 − 5 widen + 6 fittingChips).
+
+- [ ] **Step 5: Remove the Widen button and suggest chips**
+
+In `web/app/plan/page.tsx`:
+
+Remove `widen` from the `@/lib/planning` import and add `fittingChips`. Delete the whole `applyWiden`
+function.
+
+Replace the guard paragraph's contents (the `!fits(...) && (...)` block from Task 4) with:
+
+```tsx
+                      {!fits({ earliest: a.earliest, finishBy: a.finishBy }, a.durSlots) && (
+                        <p role="status" style={{ gridColumn: "1 / -1", margin: "6px 0 0", fontSize: 13, color: "var(--ink)" }}>
+                          {a.earliest >= a.finishBy
+                            ? "Finish-by must be after earliest start. We plan a single midnight-to-midnight day, so a window that crosses midnight isn't supported yet."
+                            : `A ${a.duration_hours}-hour ${a.name.toLowerCase()} needs at least a ${a.duration_hours}-hour window — you've allowed ${((a.finishBy - a.earliest) / 2).toFixed(1)} hours.`}
+                          {(() => {
+                            const ok = fittingChips(a.noiseSensitive, a.durSlots);
+                            if (!ok.length) return " No preset window is long enough for this load.";
+                            const labels = ok.map((id) => CHIPS.find((c) => c.id === id)!.label);
+                            const list = labels.length > 1
+                              ? `${labels.slice(0, -1).join(", ")} or ${labels[labels.length - 1]}`
+                              : labels[0];
+                            return ` Try ${list}.`;
+                          })()}
+                        </p>
+                      )}
+```
+
+No "Widen to …" button anywhere. The midnight wording still appears only when `earliest >= finishBy`.
+
+- [ ] **Step 6: Verify typecheck, tests and build**
+
+```bash
+cd web && npm run typecheck && npx vitest run && npm run build
+```
+
+Expected: typecheck silent; 29 tests pass; build succeeds. Confirm no reference to `widen` or `applyWiden`
+remains: `grep -rn "widen\|applyWiden" web/lib web/app` should return nothing.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add web/lib/planning.ts web/lib/planning.test.ts web/app/plan/page.tsx
+git commit -m "fix(web): suggest a workable window instead of a minimal one"
+```
+
+---
+
 ## Definition of done
 
 - The reported bug (12:00–13:00, 2-hour wash) is caught in the form, explained accurately, and fixable in one click.
