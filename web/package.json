@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "gen:types": "openapi-typescript http://127.0.0.1:8000/openapi.json -o lib/types.gen.ts"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.1.6",
     "openapi-typescript": "^7.4.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.10"
   }
 }
