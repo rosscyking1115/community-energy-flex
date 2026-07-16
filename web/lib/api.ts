@@ -9,13 +9,29 @@ import type {
   Region,
 } from "@/lib/types";
 
+/** An API failure that keeps the HTTP status and the raw detail body. */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly detail: unknown,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function asJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const detail = await res
       .json()
       .then((b) => b?.detail)
       .catch(() => null);
-    throw new Error(detail ?? res.statusText);
+    throw new ApiError(
+      res.status,
+      detail ?? null,
+      typeof detail === "string" ? detail : res.statusText,
+    );
   }
   return res.json() as Promise<T>;
 }

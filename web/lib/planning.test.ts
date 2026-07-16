@@ -98,3 +98,45 @@ describe("defaultBaseline", () => {
     expect(defaultBaseline({ earliest: 0, finishBy: 48 }, 24)).toBe(24);
   });
 });
+
+import { classifyApiError } from "@/lib/planning";
+
+describe("classifyApiError", () => {
+  it("classifies the reported bug as a too-small window, not a midnight wrap", () => {
+    expect(
+      classifyApiError("task Washing machine: window [24, 26) is too small for duration 4", 422),
+    ).toBe("window_too_small");
+  });
+
+  it("classifies a baseline outside the window", () => {
+    expect(
+      classifyApiError("task Washing machine: preferred_start 38 is outside the feasible window", 422),
+    ).toBe("baseline_outside");
+  });
+
+  it("classifies an infeasible task", () => {
+    expect(
+      classifyApiError("task Kiln cannot be scheduled within [0, 14) on a 48-slot horizon", 422),
+    ).toBe("infeasible");
+  });
+
+  it("classifies any 503 as forecast unavailable, whatever the detail says", () => {
+    expect(classifyApiError("Carbon data is unavailable for this region", 503)).toBe(
+      "forecast_unavailable",
+    );
+  });
+
+  it("handles FastAPI's array-shaped validation detail without crashing", () => {
+    expect(
+      classifyApiError([{ msg: "Field required", loc: ["body", "tasks", 0, "device_type"] }], 422),
+    ).toBe("generic");
+  });
+
+  it("falls back to generic for an unrecognised string", () => {
+    expect(classifyApiError("something we have never seen", 422)).toBe("generic");
+  });
+
+  it("falls back to generic for a null detail", () => {
+    expect(classifyApiError(null, 500)).toBe("generic");
+  });
+});

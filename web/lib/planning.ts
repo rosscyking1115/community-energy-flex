@@ -84,3 +84,40 @@ export function defaultBaseline(win: Win, durationSlots: number): number {
   const latestStart = win.finishBy - durationSlots;
   return Math.max(win.earliest, Math.min(BASELINE_ANCHOR, latestStart));
 }
+
+export type ErrorKind =
+  | "window_too_small"
+  | "baseline_outside"
+  | "infeasible"
+  | "forecast_unavailable"
+  | "generic";
+
+/** FastAPI details are a string (our HTTPException) or an array (request validation). */
+function detailToText(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((d) => (d && typeof d === "object" && "msg" in d ? String(d.msg) : "")).join(" ");
+  }
+  return "";
+}
+
+/**
+ * Map an API failure to the reason we show.
+ *
+ * This parses the engine's message text, which is coupling to a format the API
+ * does not promise. It is accepted because sub-project A cannot change the API
+ * contract; C should add a machine-readable code, and this is the one function
+ * that changes when it does.
+ *
+ * Note there is no "midnight wrap" kind: the engine reports a wrap as "too
+ * small" (window [44, 6)), and the form now blocks it before submit. The
+ * midnight message belongs to the client-side guard, not here.
+ */
+export function classifyApiError(detail: unknown, status: number): ErrorKind {
+  if (status === 503) return "forecast_unavailable";
+  const text = detailToText(detail);
+  if (/is too small for duration/.test(text)) return "window_too_small";
+  if (/preferred_start .* outside the feasible window/.test(text)) return "baseline_outside";
+  if (/cannot be scheduled within/.test(text)) return "infeasible";
+  return "generic";
+}
