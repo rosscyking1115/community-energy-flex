@@ -10,29 +10,16 @@ export interface Win {
   finishBy: number;
 }
 
-/** Can `durationSlots` fit between `earliest` and `finishBy`? */
-export function fits(win: Win, durationSlots: number): boolean {
-  return win.finishBy - win.earliest >= durationSlots;
-}
-
 /**
- * Smallest widening of `win` that fits the load, or null if the day cannot.
+ * Can `durationSlots` fit between `earliest` and `finishBy`?
  *
- * Pulls `earliest` back first and only extends `finishBy` once earliest hits
- * 00:00: "finish by" is usually a real deadline (the wash must be done before
- * you leave), whereas "earliest" is a convenience. Extending the deadline would
- * silently break the constraint the user actually cared about.
+ * A window whose finish is not after its start crosses midnight, which the engine
+ * cannot express — rejected explicitly rather than relying on the subtraction
+ * going negative.
  */
-export function widen(win: Win, durationSlots: number): Win | null {
-  const need = durationSlots - (win.finishBy - win.earliest);
-  if (need <= 0) return win;
-
-  const earliest = Math.max(0, win.earliest - need);
-  const stillNeeded = need - (win.earliest - earliest);
-  const finishBy = win.finishBy + stillNeeded;
-  if (finishBy > SLOTS) return null;
-
-  return { earliest, finishBy };
+export function fits(win: Win, durationSlots: number): boolean {
+  if (win.finishBy <= win.earliest) return false;
+  return win.finishBy - win.earliest >= durationSlots;
 }
 
 /** 19:00 — the "typical evening start". Must match BASELINE_SLOT in app/page.tsx. */
@@ -83,6 +70,20 @@ export function windowForChip(chip: Chip, noiseSensitive: boolean): Win {
 export function defaultBaseline(win: Win, durationSlots: number): number {
   const latestStart = win.finishBy - durationSlots;
   return Math.max(win.earliest, Math.min(BASELINE_ANCHOR, latestStart));
+}
+
+/**
+ * The preset chips whose window can actually hold this load, in CHIPS order.
+ *
+ * Used to suggest a way out when a custom window is too short. We point at
+ * windows we already know are good rather than inventing a minimal one: the
+ * smallest window that fits a load has exactly one placement, so it would
+ * always produce a plan that recommends the baseline and saves nothing.
+ */
+export function fittingChips(noiseSensitive: boolean, durationSlots: number): Chip[] {
+  return CHIPS.map((c) => c.id)
+    .filter((id) => id !== "custom")
+    .filter((id) => fits(windowForChip(id, noiseSensitive), durationSlots));
 }
 
 export type ErrorKind =

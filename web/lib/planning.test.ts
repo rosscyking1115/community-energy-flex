@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { defaultBaseline, fits, windowForChip, widen } from "@/lib/planning";
+import { defaultBaseline, fits, windowForChip } from "@/lib/planning";
 
 describe("fits", () => {
   it("accepts an exact fit", () => {
@@ -25,31 +25,6 @@ describe("fits", () => {
 
   it("rejects an inverted (wrapping) window", () => {
     expect(fits({ earliest: 44, finishBy: 14 }, 4)).toBe(false);
-  });
-});
-
-describe("widen", () => {
-  it("pulls earliest back, preserving the finish-by deadline", () => {
-    // The reported bug: 12:00-13:00, 2-hour wash -> 11:00-13:00, not 12:00-14:00.
-    expect(widen({ earliest: 24, finishBy: 26 }, 4)).toEqual({ earliest: 22, finishBy: 26 });
-  });
-
-  it("extends finish-by only when earliest is already at 00:00", () => {
-    expect(widen({ earliest: 0, finishBy: 2 }, 4)).toEqual({ earliest: 0, finishBy: 4 });
-  });
-
-  it("splits across both edges when neither alone suffices", () => {
-    // Pull earliest 1 -> 0 (gains 1 slot), still 2 short, so extend finishBy 2 -> 4.
-    // The result is exactly durationSlots wide: widening is minimal, never generous.
-    expect(widen({ earliest: 1, finishBy: 2 }, 4)).toEqual({ earliest: 0, finishBy: 4 });
-  });
-
-  it("returns the window unchanged when it already fits", () => {
-    expect(widen({ earliest: 0, finishBy: 48 }, 4)).toEqual({ earliest: 0, finishBy: 48 });
-  });
-
-  it("returns null when the whole day cannot hold the load", () => {
-    expect(widen({ earliest: 0, finishBy: 4 }, 49)).toBeNull();
   });
 });
 
@@ -138,5 +113,35 @@ describe("classifyApiError", () => {
 
   it("falls back to generic for a null detail", () => {
     expect(classifyApiError(null, 500)).toBe("generic");
+  });
+});
+
+import { fittingChips } from "@/lib/planning";
+
+describe("fittingChips", () => {
+  it("offers every preset window to a short load", () => {
+    expect(fittingChips(false, 4)).toEqual(["anytime", "early", "daytime"]);
+  });
+
+  it("drops early hours for an 8-hour slow cooker", () => {
+    // Early hours is 00:00-07:00 = 14 slots; the load needs 16.
+    expect(fittingChips(false, 16)).toEqual(["anytime", "daytime"]);
+  });
+
+  it("offers every preset window to a short noise-sensitive load", () => {
+    expect(fittingChips(true, 4)).toEqual(["anytime", "early", "daytime"]);
+  });
+
+  it("offers only anytime to a 17-hour load", () => {
+    expect(fittingChips(false, 34)).toEqual(["anytime"]);
+  });
+
+  it("offers nothing when a noise-sensitive load outlasts every window", () => {
+    // Anytime for a noise-sensitive load is 07:00-23:00 = 32 slots.
+    expect(fittingChips(true, 34)).toEqual([]);
+  });
+
+  it("never offers custom", () => {
+    expect(fittingChips(false, 4)).not.toContain("custom");
   });
 });

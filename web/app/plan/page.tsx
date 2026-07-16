@@ -12,7 +12,7 @@ import {
   classifyApiError,
   defaultBaseline,
   fits,
-  widen,
+  fittingChips,
   windowForChip,
   type Chip,
   type ErrorKind,
@@ -123,17 +123,6 @@ export default function PlanPage() {
         if (chip === "custom") return { ...a, chip };
         const win = windowForChip(chip, a.noiseSensitive);
         return { ...a, chip, ...win, preferred: defaultBaseline(win, a.durSlots) };
-      }),
-    );
-  }
-
-  function applyWiden(key: string) {
-    setAdded((prev) =>
-      prev.map((a) => {
-        if (a.key !== key) return a;
-        const w = widen({ earliest: a.earliest, finishBy: a.finishBy }, a.durSlots);
-        if (!w) return a;
-        return { ...a, ...w, preferred: defaultBaseline(w, a.durSlots) };
       }),
     );
   }
@@ -348,12 +337,13 @@ export default function PlanPage() {
                             ? "Finish-by must be after earliest start. We plan a single midnight-to-midnight day, so a window that crosses midnight isn't supported yet."
                             : `A ${a.duration_hours}-hour ${a.name.toLowerCase()} needs at least a ${a.duration_hours}-hour window — you've allowed ${((a.finishBy - a.earliest) / 2).toFixed(1)} hours.`}
                           {(() => {
-                            const w = widen({ earliest: a.earliest, finishBy: a.finishBy }, a.durSlots);
-                            return w ? (
-                              <button type="button" onClick={() => applyWiden(a.key)} style={{ marginLeft: 10, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", color: "var(--ink)", font: "inherit" }}>
-                                Widen to {slotToClock(w.earliest)}–{slotToClock(w.finishBy)}
-                              </button>
-                            ) : null;
+                            const ok = fittingChips(a.noiseSensitive, a.durSlots);
+                            if (!ok.length) return " No preset window is long enough for this load.";
+                            const labels = ok.map((id) => CHIPS.find((c) => c.id === id)!.label);
+                            const list = labels.length > 1
+                              ? `${labels.slice(0, -1).join(", ")} or ${labels[labels.length - 1]}`
+                              : labels[0];
+                            return ` Try ${list}.`;
                           })()}
                         </p>
                       )}
@@ -431,9 +421,9 @@ export default function PlanPage() {
           </h2>
           <p style={{ margin: "0 0 18px", fontSize: 15, lineHeight: 1.55, color: "var(--ink-soft-2)", maxWidth: "58ch" }}>
             {errorKind === "window_too_small"
-              ? "The run window is shorter than the load takes. Go back and widen it — the form will suggest the smallest change that works."
+              ? "The run window is shorter than the load takes. Go back and choose a longer window — the form will suggest a preset that fits."
               : errorKind === "baseline_outside"
-                ? "The usual start has to be a time the load could actually run within the window you set. Go back and move it inside, or widen the window."
+                ? "The usual start has to be a time the load could actually run within the window you set. Go back and move it inside, or choose a longer window."
                 : errorKind === "infeasible"
                   ? "There's no start time inside that window where the load finishes in time. Try a wider window."
                   : errorKind === "forecast_unavailable"
