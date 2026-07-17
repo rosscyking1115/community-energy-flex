@@ -8,7 +8,7 @@ import { plexMono, plexSans } from "./fonts";
 export const metadata: Metadata = {
   title: "Community Energy Flex — when to run flexible loads",
   description:
-    "Find the cleanest, cheapest window to run flexible electricity loads, from live UK grid carbon and Octopus Agile prices. Planning advice only.",
+    "When to run flexible electricity loads: half-hourly UK grid carbon and Octopus Agile prices, scored for each start time. Planning advice only.",
 };
 
 export default function RootLayout({

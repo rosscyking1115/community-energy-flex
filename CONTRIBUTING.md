@@ -1,14 +1,13 @@
 # Contributing
 
-Thanks for your interest in Community Energy Flex. Contributions of all
-kinds are welcome — bug reports, docs, tariff/region support, optimiser
-improvements, and more.
+Thanks for your interest in Community Energy Flex. Bug reports, docs,
+tariff/region support, and optimiser improvements are all welcome.
 
 ## Ground rules
 
-- **Be useful and honest.** This is a real-world decision-support tool, not a demo.
-  Recommendations must show assumptions and caveats and never claim guaranteed
-  savings (see [docs/PRODUCT_THESIS.md](docs/PRODUCT_THESIS.md)).
+- **Be useful and honest.** Recommendations must show their assumptions and
+  caveats and never claim guaranteed savings
+  (see [docs/PRODUCT_THESIS.md](docs/PRODUCT_THESIS.md)).
 - **Keep the core dependency-light.** `src/community_energy_flex/` runs on the
   standard library; Streamlit, dbt, Dagster, PuLP, MLflow, and report writers are
   all optional extras behind guarded imports.

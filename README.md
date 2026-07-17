@@ -53,7 +53,7 @@ npm install
 npm run dev
 ```
 
-The Streamlit reference interface remains available with:
+A Streamlit interface is also included:
 
 ```bash
 streamlit run app/streamlit_app.py
