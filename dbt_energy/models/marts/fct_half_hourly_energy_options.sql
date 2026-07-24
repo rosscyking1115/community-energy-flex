@@ -8,12 +8,16 @@ tariff as (
     select * from {{ ref('stg_tariff_rates') }}
 )
 select
+    carbon.planning_date,
     carbon.slot_index,
     carbon.carbon_gco2_per_kwh,
     tariff.unit_rate_p_per_kwh,
     carbon.carbon_gco2_per_kwh   as carbon_per_kwh_gco2,
     tariff.unit_rate_p_per_kwh   as cost_per_kwh_p,
-    case when carbon.slot_index between 34 and 37 then true else false end as is_peak_slot
+    case when carbon.slot_index between 34 and 37 then true else false end as is_peak_slot,
+    carbon.source_observed_at,
+    carbon.input_provenance_state,
+    carbon.source_promises_full_day
 from carbon
-join tariff using (slot_index)
-order by carbon.slot_index
+join tariff using (planning_date, slot_index)
+order by carbon.planning_date, carbon.slot_index

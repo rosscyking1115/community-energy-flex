@@ -19,25 +19,82 @@ models:
 
   - name: fct_daily_savings
     description: >
-      Savings fact at date x community x household x device grain, with integer
-      surrogate FKs to the dimensions. Relationship tests enforce the star.
+      Contracted planning-report fact at date x community x household x device
+      grain. dbt derives the reported differences from the explicit optimiser
+      baseline and scheduled raw values; missing source data remains null.
+    config:
+      contract:
+        enforced: true
     columns:
       - name: date_key
-        data_tests:
-          - not_null
-          - relationships: { to: ref('dim_date'), field: date_key }
+        data_type: bigint
+        data_tests: [not_null, {relationships: {arguments: {to: ref('dim_date'), field: date_key}}}]
       - name: device_key
-        data_tests:
-          - not_null
-          - relationships: { to: ref('dim_device'), field: device_key }
+        data_type: bigint
+        data_tests: [not_null, {relationships: {arguments: {to: ref('dim_device'), field: device_key}}}]
       - name: community_key
-        data_tests:
-          - not_null
-          - relationships: { to: ref('dim_community'), field: community_key }
-      - name: cost_saving_p
-        data_tests: [not_null]
+        data_type: bigint
+        data_tests: [not_null, {relationships: {arguments: {to: ref('dim_community'), field: community_key}}}]
+      - { name: household_id, data_type: varchar, data_tests: [not_null] }
+      - { name: schedule_run_id, data_type: varchar, data_tests: [not_null] }
+      - { name: reporting_status, data_type: varchar, data_tests: [{accepted_values: {arguments: {values: ['reportable', 'not_reportable']}}}] }
+      - { name: input_provenance_state, data_type: varchar, data_tests: [not_null, {accepted_values: {arguments: {values: ['live_forecast', 'last_good_fallback', 'sample_input']}}}] }
+      - { name: fallback_reason, data_type: varchar }
+      - { name: carbon_source, data_type: varchar }
+      - { name: carbon_source_label, data_type: varchar }
+      - { name: price_source, data_type: varchar }
+      - { name: price_source_label, data_type: varchar }
+      - { name: source_observed_at, data_type: timestamp }
+      - { name: source_valid_from, data_type: timestamp }
+      - { name: source_valid_to, data_type: timestamp }
+      - { name: source_promises_full_day, data_type: boolean, data_tests: [not_null] }
+      - { name: schedule_adherence_observed, data_type: boolean, data_tests: [not_null] }
+      - { name: preferred_start_index, data_type: integer, description: Explicit user preferred start; required for reportability. }
+      - { name: baseline_start_index, data_type: integer, description: Optimiser baseline start, reportable only when it equals the explicit preferred start. }
+      - { name: scheduled_start_index, data_type: integer }
+      - { name: duration_slots, data_type: integer }
+      - { name: source_task_count, data_type: bigint, description: Number of raw optimiser task rows aggregated into this reporting row. }
+      - { name: baseline_cost_p, data_type: double, description: Explicit preferred-start cost in pence. }
+      - { name: scheduled_cost_p, data_type: double, description: Selected schedule cost in pence. }
+      - { name: baseline_carbon_g, data_type: double, description: Explicit preferred-start carbon in grams CO2e. }
+      - { name: scheduled_carbon_g, data_type: double, description: Selected schedule carbon in grams CO2e. }
+      - { name: baseline_peak_slot_count, data_type: integer, description: Baseline overlap count in half-hour peak slots. }
+      - { name: scheduled_peak_slot_count, data_type: integer, description: Scheduled overlap count in half-hour peak slots. }
+      - { name: reported_cost_saving_p, data_type: double, description: Baseline minus scheduled cost, in pence; null when not reportable. }
+      - { name: reported_carbon_saving_g, data_type: double, description: Baseline minus scheduled carbon, in grams CO2e; null when not reportable. }
+      - { name: reported_peak_slots_avoided, data_type: integer, description: Baseline minus scheduled peak overlap, in half-hour slots; null when not reportable. }
+      - { name: robustness_score, data_type: double }
+      - { name: robustness_band, data_type: varchar }
 
   - name: rpt_daily_savings
-    description: Pre-aggregated daily totals for the timeline page.
+    description: Strict aggregate of reportable fct_daily_savings rows for the timeline.
   - name: rpt_monthly_community_savings
-    description: Monthly savings per community for the comparison page.
+    description: Strict aggregate of reportable fct_daily_savings rows for comparison.
+
+exposures:
+  - name: fastapi_reporting_contract
+    type: application
+    maturity: high
+    url: http://localhost:8000
+    description: FastAPI planning response consumes contracted schedule-report fields.
+    depends_on: [ref('fct_daily_savings'), ref('fct_half_hourly_energy_options')]
+    owner: { name: Community Energy Flex, email: energy-flex@example.invalid }
+  - name: nextjs_reporting_contract
+    type: application
+    maturity: high
+    url: http://localhost:3000
+    description: Next.js planning input and results consume the API reporting contract.
+    depends_on: [ref('fct_daily_savings')]
+    owner: { name: Community Energy Flex, email: energy-flex@example.invalid }
+  - name: power_bi_reporting_contract
+    type: dashboard
+    maturity: high
+    description: Power BI imports daily reporting fact and its conditional metrics.
+    depends_on: [ref('fct_daily_savings'), ref('rpt_daily_savings'), ref('rpt_monthly_community_savings')]
+    owner: { name: Community Energy Flex, email: energy-flex@example.invalid }
+  - name: action_report_reporting_contract
+    type: analysis
+    maturity: high
+    description: The generated action report is a downstream consumer of contract-aligned output.
+    depends_on: [ref('fct_daily_savings')]
+    owner: { name: Community Energy Flex, email: energy-flex@example.invalid }

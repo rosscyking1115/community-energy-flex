@@ -22,9 +22,6 @@ export function fits(win: Win, durationSlots: number): boolean {
   return win.finishBy - win.earliest >= durationSlots;
 }
 
-/** 19:00 — the "typical evening start". Must match BASELINE_SLOT in app/page.tsx. */
-export const BASELINE_ANCHOR = 38;
-
 const QUIET_START = 14; // 07:00
 const QUIET_END = 46; // 23:00
 
@@ -57,19 +54,6 @@ export function windowForChip(chip: Chip, noiseSensitive: boolean): Win {
     case "custom":
       return { earliest: 0, finishBy: SLOTS };
   }
-}
-
-/**
- * The baseline start we compare savings against, clamped into the window.
- *
- * The clamp is not a choice: domain/models.py rejects a preferred_start outside
- * the feasible window, so 19:00 with an early-hours window would 422. The UI
- * must therefore state the baseline this returns, not claim 19:00.
- * Sub-project B removes the clamp.
- */
-export function defaultBaseline(win: Win, durationSlots: number): number {
-  const latestStart = win.finishBy - durationSlots;
-  return Math.max(win.earliest, Math.min(BASELINE_ANCHOR, latestStart));
 }
 
 /**

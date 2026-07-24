@@ -30,7 +30,12 @@ from community_energy_flex.domain.models import (
 )
 from community_energy_flex.optimisation.planning import build_planning_slots
 from community_energy_flex.optimisation.rule_based import optimise
-from community_energy_flex.reporting.summary import build_action_summary, format_text_report
+from community_energy_flex.reporting.summary import (
+    ReportingContext,
+    build_action_summary,
+    format_text_report,
+    report_basis_for_input_provenance,
+)
 
 st.set_page_config(
     page_title="Community Energy Flex",
@@ -209,9 +214,11 @@ with st.sidebar:
 
 # --- Carbon curve -----------------------------------------------------------
 using_actual = False
+input_provenance_state = "sample_input"
 if use_live:
     try:
         carbon = _live_carbon_curve(outcode)
+        input_provenance_state = "live_forecast"
         st.sidebar.success("Live forecast loaded.")
     except Exception as exc:  # noqa: BLE001 - surface any fetch failure to the user
         st.sidebar.warning(f"Couldn't load the live forecast ({exc}). Using sample data.")
@@ -271,11 +278,45 @@ elif submitted:
             st.stop()
 
         summary = build_action_summary(schedule)
+        reporting_context = ReportingContext(
+            basis=report_basis_for_input_provenance(input_provenance_state),
+            status=(
+                "reportable"
+                if all(task.preferred_start is not None for task in tasks)
+                else "not_reportable"
+            ),
+            reason=(
+                "No explicit preferred start was supplied; cost and carbon differences "
+                "are unavailable."
+            ),
+        )
 
         st.subheader("Your plan")
-        c1, c2 = st.columns(2)
-        c1.metric("Estimated cost saving", f"£{summary.total_cost_saving_pounds:.2f}")
-        c2.metric("Estimated carbon saving", f"{summary.total_carbon_saving_kg:.2f} kg CO₂")
+        if reporting_context.is_reportable:
+            c1, c2 = st.columns(2)
+            if input_provenance_state == "live_forecast":
+                metric_prefix = "Estimated"
+                st.caption(
+                    "Illustrative forecast planning differences; not a savings guarantee."
+                )
+            else:
+                metric_prefix = "Illustrative"
+                st.caption(
+                    "Synthetic-household, illustrative sample-input planning differences; "
+                    "not a savings guarantee."
+                )
+            c1.metric(
+                f"{metric_prefix} cost difference",
+                f"£{summary.total_cost_saving_pounds:.2f}",
+            )
+            c2.metric(
+                f"{metric_prefix} carbon difference",
+                f"{summary.total_carbon_saving_kg:.2f} kg CO₂",
+            )
+        else:
+            st.caption(
+                "Not reportable: add an explicit preferred start to compare cost and carbon."
+            )
 
         st.dataframe(
             pd.DataFrame(
@@ -283,10 +324,16 @@ elif submitted:
                     {
                         "Appliance": ln.device_type,
                         "Run at": ln.recommended_window,
-                        "Instead of": ln.baseline_window,
-                        "Saves (p)": ln.cost_saving_p,
-                        "Saves (g CO₂)": ln.carbon_saving_g,
                         "Robustness": ln.robustness_band,
+                        **(
+                            {
+                                "Instead of": ln.baseline_window,
+                                "Cost difference (p)": ln.cost_saving_p,
+                                "Carbon difference (g CO₂)": ln.carbon_saving_g,
+                            }
+                            if reporting_context.is_reportable
+                            else {}
+                        ),
                     }
                     for ln in summary.lines
                 ]
@@ -303,14 +350,19 @@ elif submitted:
         st.subheader("Take it with you")
         d1, d2, d3 = st.columns(3)
         d1.download_button(
-            "Text (.txt)", format_text_report(summary),
+            "Text (.txt)",
+            format_text_report(
+                summary,
+                reporting_context=reporting_context,
+            ),
             file_name="energy_action_report.txt",
         )
         try:
             from community_energy_flex.reporting.excel_report import write_workbook_bytes
 
             d2.download_button(
-                "Excel (.xlsx)", write_workbook_bytes(summary),
+                "Excel (.xlsx)",
+                write_workbook_bytes(summary, reporting_context=reporting_context),
                 file_name="community_energy_action_report.xlsx",
             )
         except ImportError:
@@ -319,7 +371,8 @@ elif submitted:
             from community_energy_flex.reporting.pdf_report import write_pdf_bytes
 
             d3.download_button(
-                "PDF (.pdf)", write_pdf_bytes(summary),
+                "PDF (.pdf)",
+                write_pdf_bytes(summary, reporting_context=reporting_context),
                 file_name="community_energy_action_report.pdf",
             )
         except ImportError:

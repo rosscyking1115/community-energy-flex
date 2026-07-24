@@ -20,6 +20,12 @@ It is a portfolio demonstration, not a control system or a savings guarantee. Th
 - Conditional ex-post scenario analysis. Because task adherence is not observed, this is a synthetic stress test rather than realised-savings evidence.
 - Text, Excel, PDF, dbt, Snowflake, Dagster, and Power BI reporting paths.
 
+Fresh action reports are blocked when optimisation fails or required provenance
+is absent. Deterministic fixture mode (`CEF_FIXTURE_MODE=1`) uses labelled
+synthetic-household inputs for CI and demonstrations; it requires no paid or
+live external API call. All dashboard screenshots and KPIs are illustrative,
+conditional ex-post where applicable, and not a savings guarantee.
+
 ## Try it
 
 The public endpoints keep their original hostnames; those URLs are stable deployment identifiers, not the current product name.
@@ -96,7 +102,10 @@ Project claims and evidence boundaries are tracked in the [claim ledger](docs/CL
 
 ![Community Energy Flex Power BI overview showing illustrative household KPIs for cost, carbon, avoided peak slots, scheduled tasks, and average robustness](docs/img/powerbi_overview.png)
 
-Both dashboard images use synthetic-household demonstration data. The model, DAX, theme, and reproducible seed path are in [`powerbi/`](powerbi/); see the [dashboard guide](docs/POWERBI_DASHBOARD_GUIDE.md).
+Both dashboard images use synthetic-household, illustrative planning data. KPI
+differences are conditional ex-post where applicable and are not a savings
+guarantee. The model, DAX, theme, and reproducible seed path are in
+[`powerbi/`](powerbi/); see the [dashboard guide](docs/POWERBI_DASHBOARD_GUIDE.md).
 
 ## Repository map
 
@@ -120,6 +129,8 @@ Both dashboard images use synthetic-household demonstration data. The model, DAX
 | [Data sources](docs/DATA_SOURCES.md) | Source semantics and fallback rules |
 | [Methodology](docs/METHODOLOGY.md) | Baseline, objectives, robustness, and conditional ex-post analysis |
 | [Architecture](docs/ARCHITECTURE.md) | Module boundaries and request flow |
+| [Metric catalogue](docs/METRIC_CATALOGUE.md) | Units, signs, owners, and publication conditions |
+| [Reporting lineage](docs/LINEAGE.md) | Core, Dagster, dbt and consumer boundaries |
 | [Runbook](docs/RUNBOOK.md) | Local operation and failure modes |
 | [Future research](docs/FUTURE_RESEARCH.md) | Work intentionally deferred beyond v0.2.0 |
 | [Security](SECURITY.md) | Responsible disclosure |

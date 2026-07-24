@@ -15,6 +15,7 @@ Then rebuild and re-export:
 from __future__ import annotations
 
 import csv
+import json
 import random
 from datetime import date, timedelta
 from pathlib import Path
@@ -28,6 +29,9 @@ from community_energy_flex.optimisation.rule_based import optimise
 SEEDS = Path(__file__).resolve().parents[1] / "dbt_energy" / "seeds"
 OUT = SEEDS / "seed_daily_savings.csv"
 DATES_OUT = SEEDS / "seed_dates.csv"
+FIXTURE_PATH = (
+    Path(__file__).resolve().parents[1] / "data" / "fixtures" / "reporting_contract_v1.json"
+)
 
 COMMUNITIES = [("C1", "Riverside Centre"), ("C2", "Hilltop Community")]
 HOUSEHOLDS_PER_COMMUNITY = 2
@@ -74,9 +78,47 @@ def peak_overlap(start: int, duration: int) -> int:
     return sum(1 for i in range(start, start + duration) if i in DEFAULT_PEAK_SLOTS)
 
 
+def contract_fixture_row() -> list[object]:
+    """Return the canonical sample-input row used by all reporting consumers."""
+    fixture = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+    return [
+        fixture["planning_date"],
+        fixture["community_id"],
+        fixture["household_id"],
+        "fixture-dishwasher",
+        fixture["device_type"],
+        fixture["schedule_run_id"],
+        fixture["reporting_status"],
+        fixture["input_provenance_state"],
+        fixture.get("fallback_reason", ""),
+        fixture["carbon_source"],
+        fixture["carbon_source_label"],
+        fixture["price_source"],
+        fixture["price_source_label"],
+        fixture["source_observed_at"],
+        fixture["source_valid_from"],
+        fixture["source_valid_to"],
+        fixture["source_promises_full_day"],
+        fixture["schedule_adherence_observed"],
+        fixture.get("preferred_start_index", fixture["baseline_start_index"]),
+        fixture["baseline_start_index"],
+        fixture["scheduled_start_index"],
+        fixture["duration_slots"],
+        fixture["baseline_cost_p"],
+        fixture["scheduled_cost_p"],
+        fixture["baseline_carbon_g"],
+        fixture["scheduled_carbon_g"],
+        fixture["baseline_peak_slot_count"],
+        fixture["scheduled_peak_slot_count"],
+        0.85,
+        "High",
+    ]
+
+
 def main() -> int:
     base_curve = sample_carbon_curve()
     tasks = demo_tasks()
+    tasks_by_id = {task.task_id: task for task in tasks}
     rows: list[list] = []
 
     for d in range(DAYS):
@@ -101,28 +143,155 @@ def main() -> int:
 
                 for st in schedule.tasks:
                     duration = st.end_index - st.start_index
-                    avoided = max(
-                        0,
-                        peak_overlap(st.baseline_start_index, duration)
-                        - peak_overlap(st.start_index, duration),
-                    )
                     rows.append(
                         [
-                            day.isoformat(), cid, hh, st.device_type,
+                            day.isoformat(), cid, hh, st.task_id, st.device_type,
+                            f"seed-{day:%Y%m%d}-{hh}", "reportable", "sample_input", "",
+                            "gb_sample_profile", "Generated synthetic carbon profile",
+                            "user_entered_tariff", "Generated synthetic tariff",
+                            f"{day.isoformat()}T00:00:00+00:00",
+                            f"{day.isoformat()}T00:00:00+00:00",
+                            f"{(day + timedelta(days=1)).isoformat()}T00:00:00+00:00",
+                            True, False, tasks_by_id[st.task_id].preferred_start,
+                            st.baseline_start_index, st.start_index, duration,
                             round(st.baseline_cost_p, 2), round(st.cost_p, 2),
-                            round(st.cost_saving_p, 2), round(st.carbon_saving_g, 1),
-                            avoided, st.robustness_score, st.robustness_band,
+                            round(st.baseline_carbon_g, 1), round(st.carbon_g, 1),
+                            peak_overlap(st.baseline_start_index, duration),
+                            peak_overlap(st.start_index, duration),
+                            st.robustness_score, st.robustness_band,
                         ]
                     )
+
+    rows.append(contract_fixture_row())
+    rows.append(
+        [
+            "2026-07-04", "C1", "C1-HN", "fixture-missing-source", "Unavailable fixture load",
+            "fixture-run-missing", "not_reportable", "sample_input", "", "", "", "", "",
+            "", "", "", False, False, "", "", "", "", "", "", "", "", "", "", 0.0,
+            "Fragile",
+        ]
+    )
+    rows.extend(
+        [
+            [
+                "2026-07-04",
+                "C1",
+                "C1-HP",
+                "fixture-missing-preferred",
+                "Missing preferred fixture load",
+                "fixture-run-missing-preferred",
+                "reportable",
+                "sample_input",
+                "",
+                "gb_sample_profile",
+                "Reporting-contract sample carbon profile",
+                "user_entered_tariff",
+                "Reporting-contract sample tariff",
+                "2026-07-03T12:00:00+00:00",
+                "2026-07-04T00:00:00+00:00",
+                "2026-07-05T00:00:00+00:00",
+                True,
+                False,
+                "",
+                34,
+                0,
+                2,
+                40.0,
+                20.0,
+                600.0,
+                200.0,
+                2,
+                0,
+                0.85,
+                "High",
+            ],
+            [
+                "2026-07-04",
+                "C1",
+                "C1-HC",
+                "fixture-clamped-preferred",
+                "Clamped preferred fixture load",
+                "fixture-run-clamped-preferred",
+                "reportable",
+                "sample_input",
+                "",
+                "gb_sample_profile",
+                "Reporting-contract sample carbon profile",
+                "user_entered_tariff",
+                "Reporting-contract sample tariff",
+                "2026-07-03T12:00:00+00:00",
+                "2026-07-04T00:00:00+00:00",
+                "2026-07-05T00:00:00+00:00",
+                True,
+                False,
+                34,
+                33,
+                0,
+                2,
+                40.0,
+                20.0,
+                600.0,
+                200.0,
+                2,
+                0,
+                0.85,
+                "High",
+            ],
+            [
+                "2026-07-04", "C1", "C1-HM", "fixture-mixed-preferred-1",
+                "Mixed preferred fixture load", "fixture-run-mixed-preferred",
+                "reportable", "sample_input", "", "gb_sample_profile",
+                "Reporting-contract sample carbon profile", "user_entered_tariff",
+                "Reporting-contract sample tariff", "2026-07-03T12:00:00+00:00",
+                "2026-07-04T00:00:00+00:00", "2026-07-05T00:00:00+00:00", True,
+                False, 34, 34, 0, 2, 40.0, 20.0, 600.0, 200.0, 2, 0, 0.85, "High",
+            ],
+            [
+                "2026-07-04", "C1", "C1-HM", "fixture-mixed-preferred-2",
+                "Mixed preferred fixture load", "fixture-run-mixed-preferred",
+                "reportable", "sample_input", "", "gb_sample_profile",
+                "Reporting-contract sample carbon profile", "user_entered_tariff",
+                "Reporting-contract sample tariff", "2026-07-03T12:00:00+00:00",
+                "2026-07-04T00:00:00+00:00", "2026-07-05T00:00:00+00:00", True,
+                False, 34, 33, 0, 2, 40.0, 20.0, 600.0, 200.0, 2, 0, 0.85, "High",
+            ],
+        ]
+    )
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.writer(fh)
         writer.writerow(
             [
-                "savings_date", "community_id", "household_id", "device_type",
-                "baseline_cost_p", "optimised_cost_p", "cost_saving_p",
-                "carbon_saving_g", "peak_slots_avoided", "robustness_score",
+                "savings_date",
+                "community_id",
+                "household_id",
+                "task_id",
+                "device_type",
+                "schedule_run_id",
+                "reporting_status",
+                "input_provenance_state",
+                "carbon_source",
+                "fallback_reason",
+                "carbon_source_label",
+                "price_source",
+                "price_source_label",
+                "source_observed_at",
+                "source_valid_from",
+                "source_valid_to",
+                "source_promises_full_day",
+                "schedule_adherence_observed",
+                "preferred_start_index",
+                "baseline_start_index",
+                "scheduled_start_index",
+                "duration_slots",
+                "baseline_cost_p",
+                "scheduled_cost_p",
+                "baseline_carbon_g",
+                "scheduled_carbon_g",
+                "baseline_peak_slot_count",
+                "scheduled_peak_slot_count",
+                "robustness_score",
                 "robustness_band",
             ]
         )
@@ -130,7 +299,11 @@ def main() -> int:
 
     days = len({r[0] for r in rows})
     households = len({r[2] for r in rows})
-    total_avoided = sum(r[8] for r in rows)
+    total_avoided = sum(
+        (r[26] or 0) - (r[27] or 0)
+        for r in rows
+        if r[6] == "reportable"
+    )
     print(
         f"{OUT.name}: {len(rows)} rows over {days} days, {households} households, "
         f"{total_avoided} peak slots avoided in total"

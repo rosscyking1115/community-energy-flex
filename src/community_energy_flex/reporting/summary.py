@@ -7,6 +7,7 @@ the numbers and wording stay consistent across every output.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 from community_energy_flex.domain.models import Schedule, slot_to_time
 
@@ -74,24 +75,109 @@ def build_action_summary(schedule: Schedule) -> ActionSummary:
     )
 
 
-def format_text_report(summary: ActionSummary) -> str:
-    """A plain-text report - handy for the CLI, logs, and MLflow artifacts."""
+ReportBasis = Literal["forecast", "sample_input", "fallback", "conditional_ex_post"]
+ReportingStatus = Literal["reportable", "not_reportable"]
+PlanningInputProvenance = Literal["live_forecast", "sample_input", "last_good_fallback"]
+_MISSING_PREFERRED_REASON = (
+    "No explicit preferred start was supplied; cost and carbon differences are unavailable."
+)
+
+
+@dataclass(frozen=True)
+class ReportingContext:
+    """Evidence basis and metric availability shared by every report consumer."""
+
+    basis: ReportBasis
+    status: ReportingStatus = "reportable"
+    reason: str | None = None
+
+    @property
+    def is_reportable(self) -> bool:
+        return self.status == "reportable"
+
+
+def _report_language(context: ReportingContext) -> tuple[str, str]:
+    if not context.is_reportable:
+        return (
+            "Not reportable: no explicit preferred start was supplied; "
+            "cost and carbon differences are unavailable.",
+            "Unavailable",
+        )
+
+    return {
+        "forecast": (
+            "Illustrative forecast planning result; not a savings guarantee.",
+            "Estimated",
+        ),
+        "sample_input": (
+            "Illustrative sample-input planning result; not a savings guarantee.",
+            "Illustrative",
+        ),
+        "fallback": (
+            "Illustrative fallback planning result; not a savings guarantee.",
+            "Illustrative",
+        ),
+        "conditional_ex_post": (
+            "Illustrative planning result — conditional ex-post; not a savings guarantee.",
+            "Conditional",
+        ),
+    }[context.basis]
+
+
+def report_basis_for_input_provenance(
+    input_provenance_state: PlanningInputProvenance,
+) -> ReportBasis:
+    """Choose report language from the input actually used for planning."""
+    if input_provenance_state == "live_forecast":
+        return "forecast"
+    if input_provenance_state == "last_good_fallback":
+        return "fallback"
+    return "sample_input"
+
+
+def format_text_report(
+    summary: ActionSummary,
+    *,
+    report_basis: ReportBasis = "forecast",
+    reporting_context: ReportingContext | None = None,
+) -> str:
+    """Render a report with terminology appropriate to its evidence basis."""
+    context = reporting_context or ReportingContext(
+        basis=report_basis,
+        status="not_reportable",
+        reason=_MISSING_PREFERRED_REASON,
+    )
+    heading, metric_prefix = _report_language(context)
     out = [
         "COMMUNITY ENERGY FLEXIBILITY - ACTION REPORT",
+        heading,
         f"Objective: {summary.objective}",
         "",
-        f"Estimated cost saving:   £{summary.total_cost_saving_pounds:.2f}",
-        f"Estimated carbon saving: {summary.total_carbon_saving_kg:.2f} kg CO2",
         "",
-        "What to do:",
     ]
+    if context.is_reportable:
+        out += [
+            f"{metric_prefix} cost difference:   £{summary.total_cost_saving_pounds:.2f}",
+            f"{metric_prefix} carbon difference: {summary.total_carbon_saving_kg:.2f} kg CO2",
+            "",
+        ]
+    elif context.reason:
+        out += [context.reason, ""]
+    out.append("What to do:")
     for line in summary.lines:
-        out.append(
-            f"  - {line.device_type}: run {line.recommended_window} "
-            f"(was {line.baseline_window}) "
-            f"| saves {line.cost_saving_p:.1f}p, {line.carbon_saving_g:.0f} g "
-            f"| robustness: {line.robustness_band}"
-        )
+        if context.is_reportable:
+            out.append(
+                f"  - {line.device_type}: run {line.recommended_window} "
+                f"(was {line.baseline_window}) "
+                f"| {metric_prefix.lower()} difference {line.cost_saving_p:.1f}p, "
+                f"{line.carbon_saving_g:.0f} g "
+                f"| robustness: {line.robustness_band}"
+            )
+        else:
+            out.append(
+                f"  - {line.device_type}: run {line.recommended_window} "
+                f"| robustness: {line.robustness_band}"
+            )
         out.append(f"      {line.caveat}")
     out += ["", summary.safety_statement]
     return "\n".join(out)

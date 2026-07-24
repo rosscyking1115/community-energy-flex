@@ -12,7 +12,11 @@ from community_energy_flex.demo import sample_carbon_curve, sample_tariffs, samp
 from community_energy_flex.domain.models import Objective
 from community_energy_flex.optimisation.planning import build_planning_slots
 from community_energy_flex.optimisation.rule_based import optimise
-from community_energy_flex.reporting.summary import build_action_summary, format_text_report
+from community_energy_flex.reporting.summary import (
+    ReportingContext,
+    build_action_summary,
+    format_text_report,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -28,10 +32,25 @@ def main(argv: list[str] | None = None) -> int:
     # yields zero cost saving - shifting time can't change a flat unit rate).
     tariff = sample_tariffs()["Agile-style"]
     slots = build_planning_slots(sample_carbon_curve(), tariff)
-    schedule = optimise(
-        sample_tasks(), slots, objective, tariff_is_manual=tariff.is_manual
+    tasks = sample_tasks()
+    schedule = optimise(tasks, slots, objective, tariff_is_manual=tariff.is_manual)
+    print(
+        format_text_report(
+            build_action_summary(schedule),
+            reporting_context=ReportingContext(
+                basis="sample_input",
+                status=(
+                    "reportable"
+                    if all(task.preferred_start is not None for task in tasks)
+                    else "not_reportable"
+                ),
+                reason=(
+                    "No explicit preferred start was supplied; cost and carbon differences "
+                    "are unavailable."
+                ),
+            ),
+        )
     )
-    print(format_text_report(build_action_summary(schedule)))
     return 0
 
 

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   classifyApiError,
-  defaultBaseline,
   ERROR_COPY,
   fits,
   fittingChips,
@@ -60,42 +59,6 @@ describe("windowForChip", () => {
 
   it("custom falls back to the whole day", () => {
     expect(windowForChip("custom", false)).toEqual({ earliest: 0, finishBy: 48 });
-  });
-});
-
-describe("defaultBaseline", () => {
-  it("is 19:00 when the window allows it", () => {
-    expect(defaultBaseline({ earliest: 0, finishBy: 48 }, 4)).toBe(38);
-  });
-
-  it("clamps down to the latest legal start in an early-hours window", () => {
-    // 00:00-07:00 with a 2-hour wash: latest legal start is 05:00 (slot 10).
-    expect(defaultBaseline({ earliest: 0, finishBy: 14 }, 4)).toBe(10);
-  });
-
-  it("clamps up to earliest when the window starts after 19:00", () => {
-    expect(defaultBaseline({ earliest: 42, finishBy: 48 }, 4)).toBe(42);
-  });
-
-  it("accounts for duration at the end of the day", () => {
-    expect(defaultBaseline({ earliest: 0, finishBy: 48 }, 24)).toBe(24);
-  });
-});
-
-describe("defaultBaseline invariant", () => {
-  it("always returns a legal preferred_start for any window that fits", () => {
-    // Mirrors domain/models.py: earliest <= preferred_start <= latest_finish - duration_slots.
-    for (let earliest = 0; earliest < 48; earliest++) {
-      for (let finishBy = earliest + 1; finishBy <= 48; finishBy++) {
-        for (const d of [1, 2, 4, 5, 12, 16]) {
-          const win = { earliest, finishBy };
-          if (!fits(win, d)) continue;
-          const b = defaultBaseline(win, d);
-          expect(b).toBeGreaterThanOrEqual(earliest);
-          expect(b).toBeLessThanOrEqual(finishBy - d);
-        }
-      }
-    }
   });
 });
 

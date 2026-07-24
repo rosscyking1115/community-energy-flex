@@ -10,16 +10,15 @@ model review ([POWERBI_MODEL_REVIEW.md](POWERBI_MODEL_REVIEW.md)).
 Build the marts and export them to CSV (no Snowflake or ODBC driver needed):
 
 ```bash
-pip install -e ".[warehouse]"
-cd dbt_energy && DBT_PROFILES_DIR=. dbt build
-python -c "import duckdb; c=duckdb.connect('energy.duckdb'); \
-[c.execute(f\"COPY (SELECT * FROM {t}) TO '../powerbi/data/{t}.csv' (HEADER)\") \
-for t in ['dim_date','dim_device','dim_community','fct_daily_savings', \
-'rpt_daily_savings','rpt_monthly_community_savings']]"
+uv run --extra warehouse python scripts/generate_powerbi_seed.py
+uv run --extra warehouse dbt build --full-refresh --project-dir dbt_energy --profiles-dir dbt_energy
+uv run --extra warehouse python scripts/export_powerbi_star_tables.py
 ```
 
-This writes six CSVs to `powerbi/data/`. For production, swap this step for a
-direct Snowflake `MARTS` connection — the model and measures are identical.
+The final command regenerates all six CSVs together from the same DuckDB build;
+the four star tables are the Power BI model input. For production, swap this
+step for a direct Snowflake `MARTS` connection — the model and measures are
+identical.
 
 ## 1. Connect and model
 

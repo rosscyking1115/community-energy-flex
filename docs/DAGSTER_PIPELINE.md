@@ -16,15 +16,17 @@ dagster dev -m orchestration.definitions      # opens the Dagster UI
 
 ```
 carbon_forecast_curve  ──►  daily_schedule  ──►  action_report
-   (live API or sample)     (run_daily_pipeline)   (text report + metadata)
+ (live/sample/unavailable)  (Python core)       (guarded fresh publication)
 ```
 
-- **carbon_forecast_curve** — pulls the regional forecast; falls back to the
-  sample curve if the API is unreachable.
+- **carbon_forecast_curve** — pulls the regional forecast and labels its
+  provenance. `CEF_FIXTURE_MODE=1` selects deterministic `sample_input` for
+  CI/demo runs; a live failure is `unavailable`, never silently relabelled.
 - **daily_schedule** — runs `run_daily_pipeline`: validate → optimise → record
   monitoring, saving the result as the *last good schedule*.
-- **action_report** — renders the portable report and surfaces savings as asset
-  metadata in the UI.
+- **action_report** — renders only a successful, provenance-qualified fresh
+  report. Failed, unavailable, and last-good fallback runs remain visible in
+  Dagster but cannot publish a fresh report.
 
 ## Schedule
 

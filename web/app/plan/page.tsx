@@ -10,7 +10,6 @@ import { parseWindow, slotToClock, type Window } from "@/lib/scoring";
 import {
   CHIPS,
   classifyApiError,
-  defaultBaseline,
   ERROR_COPY,
   fits,
   fittingChips,
@@ -41,7 +40,7 @@ interface Added {
   noiseSensitive: boolean;
   earliest: number; // slot
   finishBy: number; // end slot (1–48)
-  preferred: number; // slot
+  preferred: number | null; // explicit comparison slot, if supplied
 }
 
 const TARIFFS: { id: TariffKind; label: string; sub: string; agile?: boolean }[] = [
@@ -111,7 +110,7 @@ export default function PlanPage() {
               noiseSensitive,
               earliest: win.earliest,
               finishBy: win.finishBy,
-              preferred: defaultBaseline(win, durSlots),
+              preferred: null,
             },
           ],
     );
@@ -123,19 +122,26 @@ export default function PlanPage() {
         if (a.key !== key) return a;
         if (chip === "custom") return { ...a, chip };
         const win = windowForChip(chip, a.noiseSensitive);
-        return { ...a, chip, ...win, preferred: defaultBaseline(win, a.durSlots) };
+        const latestStart = win.finishBy - a.durSlots;
+        const preferred = a.preferred !== null && a.preferred >= win.earliest && a.preferred <= latestStart
+          ? a.preferred
+          : null;
+        return { ...a, chip, ...win, preferred };
       }),
     );
   }
 
-  function setTime(key: string, field: "earliest" | "finishBy" | "preferred", v: number) {
+  function setTime(key: string, field: "earliest" | "finishBy" | "preferred", v: number | null) {
     setAdded((prev) =>
       prev.map((a) => {
         if (a.key !== key) return a;
         const next = { ...a, [field]: v };
         if (field === "preferred") return next;
         const win = { earliest: next.earliest, finishBy: next.finishBy };
-        return fits(win, a.durSlots) ? { ...next, preferred: defaultBaseline(win, a.durSlots) } : next;
+        const latestStart = win.finishBy - a.durSlots;
+        return next.preferred !== null && (next.preferred < win.earliest || next.preferred > latestStart)
+          ? { ...next, preferred: null }
+          : next;
       }),
     );
   }
@@ -143,8 +149,8 @@ export default function PlanPage() {
   const blockingLoad = added.find(
     (a) =>
       !fits({ earliest: a.earliest, finishBy: a.finishBy }, a.durSlots) ||
-      a.preferred < a.earliest ||
-      a.preferred > a.finishBy - a.durSlots,
+      (a.preferred !== null &&
+        (a.preferred < a.earliest || a.preferred > a.finishBy - a.durSlots)),
   );
   const canOpt = !!regionId && !!tariff && added.length > 0 && !blockingLoad;
   const optHint = !regionId
@@ -175,7 +181,7 @@ export default function PlanPage() {
       duration_hours: a.duration_hours,
       earliest: slotToClock(a.earliest),
       latest: a.finishBy >= 48 ? "" : slotToClock(a.finishBy),
-      preferred: slotToClock(a.preferred),
+      ...(a.preferred !== null ? { preferred: slotToClock(a.preferred) } : {}),
     }));
     const cost_weight = objective === "cheapest" ? 1 : objective === "lowest_carbon" ? 0 : weight;
     try {
@@ -211,6 +217,12 @@ export default function PlanPage() {
     () => (result ? result.tasks.map((t) => parseWindow(t.baseline_window).s) : []),
     [result],
   );
+  const reportingStatus = added.every((a) => a.preferred !== null) ? "reportable" : "not_reportable";
+  const reportBasis = result?.is_fallback
+    ? "fallback"
+    : result?.is_live_forecast
+      ? "forecast"
+      : "sample_input";
 
   return (
     <main style={{ maxWidth: "var(--col)", margin: "0 auto", padding: "42px var(--pad-x) 88px" }}>
@@ -334,15 +346,16 @@ export default function PlanPage() {
                         <>
                           <TimeField label="Earliest start" value={a.earliest} opts={START_OPTS} onChange={(v) => setTime(a.key, "earliest", v)} />
                           <TimeField label="Finish by" value={a.finishBy} opts={FINISH_OPTS} onChange={(v) => setTime(a.key, "finishBy", v)} />
-                          {fits({ earliest: a.earliest, finishBy: a.finishBy }, a.durSlots) && (
-                            <TimeField
-                              label="Usual start (baseline)"
-                              value={a.preferred}
-                              opts={START_OPTS.filter((o) => o.v >= a.earliest && o.v <= a.finishBy - a.durSlots)}
-                              onChange={(v) => setTime(a.key, "preferred", v)}
-                            />
-                          )}
                         </>
+                      )}
+                      {fits({ earliest: a.earliest, finishBy: a.finishBy }, a.durSlots) && (
+                        <TimeField
+                          label="Preferred start for comparison (optional)"
+                          value={a.preferred}
+                          opts={START_OPTS.filter((o) => o.v >= a.earliest && o.v <= a.finishBy - a.durSlots)}
+                          onChange={(v) => setTime(a.key, "preferred", v)}
+                          allowEmpty
+                        />
                       )}
                       {!fits({ earliest: a.earliest, finishBy: a.finishBy }, a.durSlots) && (
                         <p role="status" style={{ gridColumn: "1 / -1", margin: "6px 0 0", fontSize: 13, color: "var(--ink)" }}>
@@ -435,6 +448,8 @@ export default function PlanPage() {
           windows={windows}
           baselines={baselines}
           tariffLabel={tariffLabel(tariff)}
+          reportingStatus={reportingStatus}
+          reportBasis={reportBasis}
           showTable={showTable}
           onToggleTable={() => setShowTable((s) => !s)}
           onBack={backToForm}
@@ -448,33 +463,44 @@ function tariffLabel(t: TariffKind | null): string {
   return t === "agile" ? "Octopus Agile" : t === "economy7" ? "Economy 7" : t === "flat" ? "Flat rate" : "your tariff";
 }
 
-function TimeField({ label, value, opts, onChange }: { label: string; value: number; opts: { v: number; label: string }[]; onChange: (v: number) => void }) {
+function TimeField({ label, value, opts, onChange, allowEmpty = false }: { label: string; value: number | null; opts: { v: number; label: string }[]; onChange: (v: number | null) => void; allowEmpty?: boolean }) {
   return (
     <label style={{ display: "block" }}>
       <span style={{ display: "block", fontSize: 12, color: "var(--ink-soft-2)", marginBottom: 5, fontWeight: 500 }}>{label}</span>
-      <select value={value} onChange={(e) => onChange(Number(e.target.value))} style={selectStyle}>
+      <select value={value ?? ""} onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))} style={selectStyle}>
+        {allowEmpty && <option value="">No preferred start — recommendation only</option>}
         {opts.map((o) => (<option key={o.v} value={o.v}>{o.label}</option>))}
       </select>
     </label>
   );
 }
 
-function Results({ result, region, forecast, windows, baselines, tariffLabel, showTable, onToggleTable, onBack }: {
+export function Results({ result, region, forecast, windows, baselines, tariffLabel, reportingStatus, reportBasis, showTable, onToggleTable, onBack }: {
   result: OptimiseResponse;
   region: Region | undefined;
   forecast: Forecast | null;
   windows: Window[];
   baselines: number[];
   tariffLabel: string;
+  reportingStatus: "reportable" | "not_reportable";
+  reportBasis: "forecast" | "sample_input" | "fallback";
   showTable: boolean;
   onToggleTable: () => void;
   onBack: () => void;
 }) {
   const source = result.carbon_source_label;
   const basis = `${tariffLabel} · ${source}`;
+  const isReportable = reportingStatus === "reportable";
+  const reportHeading = reportBasis === "forecast"
+    ? "Illustrative forecast planning result; not a savings guarantee."
+    : reportBasis === "fallback"
+      ? "Illustrative fallback planning result; not a savings guarantee."
+      : "Illustrative sample-input planning result; not a savings guarantee.";
   const inWin = (i: number) => windows.some((w) => i >= w.s && i < w.e);
   const caveats = [
-    "Savings are versus a typical 19:00 start, moved inside your chosen window when 19:00 doesn't fit — not a best case.",
+    isReportable
+      ? "Estimated planning differences are relative to the explicit preferred start for each load, not a realised household outcome."
+      : "No explicit preferred start was supplied, so this recommendation has no reportable cost or carbon difference.",
     region && !region.supports_live_forecast
       ? "Northern Ireland uses a typical-day profile, so treat window timings as guidance rather than a same-day forecast."
       : result.is_fallback
@@ -494,7 +520,7 @@ function Results({ result, region, forecast, windows, baselines, tariffLabel, sh
       {result.is_fallback && (
         <div role="status" style={{ ...panel, borderLeft: "4px solid var(--filament)", padding: "14px 16px", margin: "-12px 0 26px" }}>
           <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-soft-2)", lineHeight: 1.5 }}>
-            Live carbon data was unavailable. This plan uses {result.carbon_source_label}; treat the recommended times and savings as illustrative.
+            Live carbon data was unavailable. This plan uses {result.carbon_source_label}; treat the recommended times and any reportable differences as illustrative.
           </p>
         </div>
       )}
@@ -502,9 +528,15 @@ function Results({ result, region, forecast, windows, baselines, tariffLabel, sh
       {/* totals */}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 20, borderBottom: "2px solid var(--ink)", paddingBottom: 22, margin: "0 0 26px" }}>
         <div>
-          <p className="mono" style={{ fontSize: 11.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--slate)", margin: "0 0 8px" }}>Move every load and you save, tomorrow</p>
-          <p className="mono" style={{ margin: 0, fontWeight: 600, fontSize: "clamp(30px,5.4vw,48px)", lineHeight: 1, letterSpacing: "-0.02em" }}>{money(result.total_cost_saving_p)} <span style={{ color: "var(--slate)", fontWeight: 500 }}>&amp;</span> {grams(result.total_carbon_saving_g)}</p>
-          <p style={{ margin: "9px 0 0", fontSize: 13, color: "var(--slate)" }}>vs a typical start · {basis}</p>
+          {isReportable ? (
+            <>
+              <p className="mono" style={{ fontSize: 11.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--slate)", margin: "0 0 8px" }}>Estimated planning difference relative to your preferred start</p>
+              <p className="mono" style={{ margin: 0, fontWeight: 600, fontSize: "clamp(30px,5.4vw,48px)", lineHeight: 1, letterSpacing: "-0.02em" }}>{money(result.total_cost_saving_p)} <span style={{ color: "var(--slate)", fontWeight: 500 }}>&amp;</span> {grams(result.total_carbon_saving_g)}</p>
+              <p style={{ margin: "9px 0 0", fontSize: 13, color: "var(--slate)" }}>{reportHeading} {basis}</p>
+            </>
+          ) : (
+            <p style={{ margin: 0, fontSize: 14, color: "var(--ink-soft-2)", lineHeight: 1.5 }}>Not reportable: add an explicit preferred start to compare cost and carbon.</p>
+          )}
         </div>
         <button type="button" onClick={onBack} style={ctaGhost}>Adjust</button>
       </div>
@@ -526,14 +558,15 @@ function Results({ result, region, forecast, windows, baselines, tariffLabel, sh
               </div>
               <p style={{ margin: "0 0 14px", fontSize: 16, lineHeight: 1.5 }}>
                 Run <span className="mono" style={{ fontWeight: 600, background: "var(--amber-chip)", padding: "1px 6px", borderRadius: 4 }}>{t.run_window}</span>
-                <span style={{ color: "var(--slate)" }}> instead of </span>
-                <span className="mono">{t.baseline_window}</span>.
+                {isReportable && <><span style={{ color: "var(--slate)" }}> instead of </span><span className="mono">{t.baseline_window}</span>.</>}
               </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px", alignItems: "baseline" }}>
-                <span className="mono" style={{ fontSize: 21, fontWeight: 600 }}>{money(t.cost_saving_p)}</span>
-                <span className="mono" style={{ fontSize: 21, fontWeight: 600 }}>{grams(t.carbon_saving_g)}</span>
-                <span style={{ fontSize: 12, color: "var(--slate)", lineHeight: 1.4 }}>saved · {basis}</span>
-              </div>
+              {isReportable && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px", alignItems: "baseline" }}>
+                  <span className="mono" style={{ fontSize: 21, fontWeight: 600 }}>{money(t.cost_saving_p)}</span>
+                  <span className="mono" style={{ fontSize: 21, fontWeight: 600 }}>{grams(t.carbon_saving_g)}</span>
+                  <span style={{ fontSize: 12, color: "var(--slate)", lineHeight: 1.4 }}>estimated difference · {basis}</span>
+                </div>
+              )}
               <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--slate)", lineHeight: 1.45 }}>{t.caveat}</p>
             </article>
           );
@@ -545,13 +578,13 @@ function Results({ result, region, forecast, windows, baselines, tariffLabel, sh
         <button type="button" onClick={onToggleTable} aria-expanded={showTable} style={ctaGhostSm}>{showTable ? "Hide data table" : "Show data table"}</button>
       </div>
       <p style={{ margin: "0 0 14px", fontSize: 13.5, color: "var(--ink-soft-2)", maxWidth: "66ch" }}>
-        Dark bars are grid carbon each half-hour — taller and denser means heavier. The thin line is price. Amber brackets mark your recommended windows; the tick marked <em>usual</em> is the baseline start. Intensity is never shown in colour.
+        Dark bars are grid carbon each half-hour — taller and denser means heavier. The thin line is price. Amber brackets mark your recommended windows; {isReportable ? "the tick marked usual is the explicit preferred start." : "no baseline is shown because no explicit preferred start was supplied."} Intensity is never shown in colour.
       </p>
 
       {forecast && (
         <>
-          <BandLegend hasPrice={!!forecast.price_p} hasBaseline={baselines.length > 0} />
-          <DayBand carbon={forecast.carbon_g} price={forecast.price_p} windows={windows} baselines={baselines} regionName={forecast.region} hasTable />
+          <BandLegend hasPrice={!!forecast.price_p} hasBaseline={isReportable && baselines.length > 0} />
+          <DayBand carbon={forecast.carbon_g} price={forecast.price_p} windows={windows} baselines={isReportable ? baselines : []} regionName={forecast.region} hasTable />
           <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--slate)", lineHeight: 1.5 }}>
             Source: {source} and {tariffLabel}. 48 half-hourly points for {forecast.region}, local time. Intensity is encoded by bar height and ink density, never by colour; amber marks only where to act.
           </p>
