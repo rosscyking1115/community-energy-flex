@@ -4,8 +4,23 @@ import csv
 import json
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_PATH = ROOT / "data" / "fixtures" / "reporting_contract_v1.json"
+
+
+def _generated_powerbi_data_dir() -> Path:
+    """Return the derived CSV export when this test lane generated it.
+
+    The core Python matrix intentionally installs no warehouse dependencies and
+    does not create ignored ``powerbi/data`` artifacts. The dedicated
+    ``dbt-fixture`` CI job owns their generation and runs these assertions.
+    """
+    data_dir = ROOT / "powerbi" / "data"
+    if not (data_dir / "fct_daily_savings.csv").exists():
+        pytest.skip("Power BI CSV export is verified in the dbt-fixture CI job")
+    return data_dir
 
 
 def test_fixed_reporting_fixture_declares_reconcilable_sample_input():
@@ -70,7 +85,7 @@ def test_powerbi_tasks_planned_sums_source_task_count_at_reporting_grain():
 
 
 def test_powerbi_fact_export_matches_the_fixed_fixture():
-    fact_path = ROOT / "powerbi" / "data" / "fct_daily_savings.csv"
+    fact_path = _generated_powerbi_data_dir() / "fct_daily_savings.csv"
     with fact_path.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
     fixture_row = next(row for row in rows if row["schedule_run_id"] == "fixture-run-001")
@@ -81,7 +96,7 @@ def test_powerbi_fact_export_matches_the_fixed_fixture():
 
 def test_powerbi_star_tables_cover_fact_foreign_keys_and_fixture_device_label():
     """The CSV star schema must be refreshed as one coherent export."""
-    data_dir = ROOT / "powerbi" / "data"
+    data_dir = _generated_powerbi_data_dir()
 
     with (data_dir / "fct_daily_savings.csv").open(newline="", encoding="utf-8") as handle:
         fact_rows = list(csv.DictReader(handle))

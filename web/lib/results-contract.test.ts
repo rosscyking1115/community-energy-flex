@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { Results } from "../app/plan/page";
+import { Results } from "../app/plan/page.client";
 import type { OptimiseResponse } from "@/lib/types";
 
 const result: OptimiseResponse = {
