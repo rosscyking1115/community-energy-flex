@@ -7,8 +7,8 @@ export const metadata: Metadata = {
 
 const ROWS = [
   {
-    h: "The baseline is a typical evening start",
-    p: "Every saving is measured against a baseline start — by default a typical 19:00 run, moved inside your chosen window when 19:00 doesn't fit. It is not a best case or a national average. Under Custom you can set the baseline yourself, and the saving is recalculated against it.",
+    h: "The comparison start is yours",
+    p: "Every reportable planning difference is measured against the preferred start you explicitly provide. It is not a best case, a national average, or an inferred usual time. If you do not provide one, the planner can still recommend a feasible window but does not report a cost or carbon difference.",
   },
   {
     h: "Two channels: price and carbon",

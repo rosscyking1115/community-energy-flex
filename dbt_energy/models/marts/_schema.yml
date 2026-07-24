@@ -2,16 +2,29 @@ version: 2
 
 models:
   - name: fct_half_hourly_energy_options
-    description: Half-hourly cost and carbon per kWh - the optimiser's option set.
+    description: One 48-slot planning day of optimiser options; not a reporting aggregate.
     columns:
+      - name: planning_date
+        data_type: date
+        data_tests: [not_null]
       - name: slot_index
         description: Half-hour slot 0..47.
+        data_type: integer
         data_tests:
           - not_null
-          - unique
       - name: carbon_gco2_per_kwh
+        data_type: double
         data_tests:
           - not_null
       - name: cost_per_kwh_p
+        data_type: double
         data_tests:
           - not_null
+      - name: source_observed_at
+        data_type: timestamp
+        data_tests: [not_null]
+      - name: input_provenance_state
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments: { values: ['live_forecast', 'last_good_fallback', 'sample_input'] }

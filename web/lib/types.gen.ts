@@ -326,6 +326,18 @@ export interface components {
             cost_saving_p: number;
             /** Carbon Saving G */
             carbon_saving_g: number;
+            /** Baseline Cost P */
+            baseline_cost_p: number;
+            /** Scheduled Cost P */
+            scheduled_cost_p: number;
+            /** Baseline Carbon G */
+            baseline_carbon_g: number;
+            /** Scheduled Carbon G */
+            scheduled_carbon_g: number;
+            /** Baseline Peak Slot Count */
+            baseline_peak_slot_count: number;
+            /** Scheduled Peak Slot Count */
+            scheduled_peak_slot_count: number;
             /** Robustness Score */
             robustness_score: number;
             /** Robustness Band */

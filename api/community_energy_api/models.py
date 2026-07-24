@@ -119,6 +119,12 @@ class ScheduledTaskOut(BaseModel):
     baseline_window: str
     cost_saving_p: float
     carbon_saving_g: float
+    baseline_cost_p: float
+    scheduled_cost_p: float
+    baseline_carbon_g: float
+    scheduled_carbon_g: float
+    baseline_peak_slot_count: int
+    scheduled_peak_slot_count: int
     robustness_score: float
     robustness_band: str
     caveat: str

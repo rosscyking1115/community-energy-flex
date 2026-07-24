@@ -88,6 +88,22 @@ def build_tasks(specs: list[TaskSpec]) -> list[Task]:
     return tasks
 
 
+def peak_slot_count(start_index: int, end_index: int, slots) -> int:
+    """Return optimiser-window peak overlap for API diagnostics, not reporting."""
+    duration_slots = end_index - start_index
+    if duration_slots < 1:
+        return 0
+    return sum(slot.is_peak for slot in slots[start_index:end_index])
+
+
+def baseline_peak_slot_count(baseline_start_index: int, duration_slots: int, slots) -> int:
+    """Return the explicit-baseline overlap as raw optimiser diagnostic input."""
+    return sum(
+        slot.is_peak
+        for slot in slots[baseline_start_index : baseline_start_index + duration_slots]
+    )
+
+
 def run_optimise(
     req: OptimiseRequest, carbon: CarbonCurveResult, region_name: str
 ) -> OptimiseResponse:
@@ -140,6 +156,20 @@ def run_optimise(
                 baseline_window=ln.baseline_window,
                 cost_saving_p=ln.cost_saving_p,
                 carbon_saving_g=ln.carbon_saving_g,
+                baseline_cost_p=scheduled.baseline_cost_p,
+                scheduled_cost_p=scheduled.cost_p,
+                baseline_carbon_g=scheduled.baseline_carbon_g,
+                scheduled_carbon_g=scheduled.carbon_g,
+                baseline_peak_slot_count=baseline_peak_slot_count(
+                    scheduled.baseline_start_index,
+                    scheduled.end_index - scheduled.start_index,
+                    slots,
+                ),
+                scheduled_peak_slot_count=peak_slot_count(
+                    scheduled.start_index,
+                    scheduled.end_index,
+                    slots,
+                ),
                 robustness_score=next(
                     t.robustness_score for t in schedule.tasks if t.task_id == ln.task_id
                 ),
@@ -147,6 +177,7 @@ def run_optimise(
                 caveat=ln.caveat,
             )
             for ln in summary.lines
+            for scheduled in [next(t for t in schedule.tasks if t.task_id == ln.task_id)]
         ],
         safety_statement=summary.safety_statement,
     )

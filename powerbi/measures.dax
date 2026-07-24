@@ -1,6 +1,6 @@
 // Power BI DAX measures for the Community Energy Flex dashboard.
 // Written per the dax-optimization guidance: VAR for shared sub-expressions,
-// DIVIDE for safe division, COUNTROWS over COUNT, explicit BLANK handling.
+// DIVIDE for safe division, SUM for task counts, explicit BLANK handling.
 // Model: fct_daily_savings (fact) related to dim_date / dim_device /
 // dim_community by their integer surrogate keys (single-direction filters).
 //
@@ -8,38 +8,67 @@
 // the "Format:" note above each measure gives the intended string. Also set
 // dim_date[day_name] to Sort by column = day_of_week (Column tools).
 
-// --- Headline savings -------------------------------------------------------
+// --- Conditional planning differences --------------------------------------
+// These measures are planning comparisons against the explicit preferred start.
+// They exclude non-reportable rows and must never be presented as realised savings.
 
 // Format: £#,##0.00
-Total Cost Saving (GBP) =
-DIVIDE ( SUM ( fct_daily_savings[cost_saving_p] ), 100 )
+Conditional Cost Difference (GBP) =
+DIVIDE (
+    CALCULATE (
+        SUM ( fct_daily_savings[reported_cost_saving_p] ),
+        KEEPFILTERS ( fct_daily_savings[reporting_status] = "reportable" )
+    ),
+    100
+)
 
 // Format: #,##0.00 "kg"
-Total Carbon Saving (kg) =
-DIVIDE ( SUM ( fct_daily_savings[carbon_saving_g] ), 1000 )
+Conditional Carbon Difference (kg) =
+DIVIDE (
+    CALCULATE (
+        SUM ( fct_daily_savings[reported_carbon_saving_g] ),
+        KEEPFILTERS ( fct_daily_savings[reporting_status] = "reportable" )
+    ),
+    1000
+)
 
 // Format: #,##0
 Peak Slots Avoided =
-SUM ( fct_daily_savings[peak_slots_avoided] )
+CALCULATE (
+    SUM ( fct_daily_savings[reported_peak_slots_avoided] ),
+    KEEPFILTERS ( fct_daily_savings[reporting_status] = "reportable" )
+)
 
 // Format: #,##0
-Tasks Optimised =
-COUNTROWS ( fct_daily_savings )
+Tasks Planned =
+CALCULATE (
+    SUM ( fct_daily_savings[source_task_count] ),
+    KEEPFILTERS ( fct_daily_savings[reporting_status] = "reportable" )
+)
 
 // Format: #,##0
 Households Participating =
-DISTINCTCOUNT ( fct_daily_savings[household_id] )
+CALCULATE (
+    DISTINCTCOUNT ( fct_daily_savings[household_id] ),
+    KEEPFILTERS ( fct_daily_savings[reporting_status] = "reportable" )
+)
 
 // Format: 0.00
 Avg Recommendation Robustness =
-AVERAGE ( fct_daily_savings[robustness_score] )
+CALCULATE (
+    AVERAGE ( fct_daily_savings[robustness_score] ),
+    KEEPFILTERS ( fct_daily_savings[reporting_status] = "reportable" )
+)
 
 // --- Ratio: safe division against the baseline ------------------------------
 
 // Returns BLANK when there is no baseline - never a #DIV/0.
 // Format: 0.0%
-Cost Saving % =
-VAR SavingP = SUM ( fct_daily_savings[cost_saving_p] )
+Conditional Cost Difference % =
+VAR SavingP = CALCULATE (
+    SUM ( fct_daily_savings[reported_cost_saving_p] ),
+    KEEPFILTERS ( fct_daily_savings[reporting_status] = "reportable" )
+)
 VAR BaselineP = SUM ( fct_daily_savings[baseline_cost_p] )
 RETURN
     DIVIDE ( SavingP, BaselineP )
@@ -48,28 +77,27 @@ RETURN
 
 // Returns BLANK in the first period, by design.
 // Format: +0.0%;-0.0%
-Cost Saving (GBP) MoM % =
-VAR CurrentSaving = [Total Cost Saving (GBP)]
+Conditional Cost Difference (GBP) MoM % =
+VAR CurrentSaving = [Conditional Cost Difference (GBP)]
 VAR PriorSaving =
     CALCULATE (
-        [Total Cost Saving (GBP)],
+        [Conditional Cost Difference (GBP)],
         DATEADD ( dim_date[full_date], -1, MONTH )
     )
 RETURN
     DIVIDE ( CurrentSaving - PriorSaving, PriorSaving )
 
-// --- Robustness-gated saving: only count Strong/Mixed recommendations -------
+// --- Robustness-gated conditional difference -------------------------------
 
 // Format: £#,##0.00
-Robust Cost Saving (GBP) =
+Robust Conditional Cost Difference (GBP) =
 CALCULATE (
-    [Total Cost Saving (GBP)],
+    [Conditional Cost Difference (GBP)],
     KEEPFILTERS ( fct_daily_savings[robustness_score] >= 0.5 )
 )
 
-// Share of the saving that rests on Strong/Mixed robustness indicators -
-// the "how much of this can we stand behind?" number for the Quality page.
-// Returns BLANK when there is no saving, never a #DIV/0.
+// Share of the conditional difference that rests on Strong/Mixed robustness
+// indicators. Returns BLANK when there is no conditional difference.
 // Format: 0.0%
-Robust Saving % =
-DIVIDE ( [Robust Cost Saving (GBP)], [Total Cost Saving (GBP)] )
+Robust Conditional Difference % =
+DIVIDE ( [Robust Conditional Cost Difference (GBP)], [Conditional Cost Difference (GBP)] )

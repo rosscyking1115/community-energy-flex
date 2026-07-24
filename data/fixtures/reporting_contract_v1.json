@@ -1,0 +1,53 @@
+{
+  "fixture_id": "reporting-contract-v1",
+  "planning_date": "2026-07-04",
+  "community_id": "C1",
+  "household_id": "C1-HF",
+  "device_type": "Fixture dishwasher",
+  "schedule_run_id": "fixture-run-001",
+  "reporting_status": "reportable",
+  "input_provenance_state": "sample_input",
+  "fallback_reason": null,
+  "carbon_source": "gb_sample_profile",
+  "carbon_source_label": "Reporting-contract sample carbon profile",
+  "price_source": "user_entered_tariff",
+  "price_source_label": "Reporting-contract sample tariff",
+  "source_observed_at": "2026-07-03T12:00:00+00:00",
+  "source_valid_from": "2026-07-04T00:00:00+00:00",
+  "source_valid_to": "2026-07-05T00:00:00+00:00",
+  "source_promises_full_day": true,
+  "schedule_adherence_observed": false,
+  "preferred_start_index": 34,
+  "baseline_start_index": 34,
+  "scheduled_start_index": 0,
+  "duration_slots": 2,
+  "baseline_cost_p": 40.0,
+  "scheduled_cost_p": 20.0,
+  "baseline_carbon_g": 600.0,
+  "scheduled_carbon_g": 200.0,
+  "baseline_peak_slot_count": 2,
+  "scheduled_peak_slot_count": 0,
+  "expected": {
+    "cost_saving_p": 20.0,
+    "carbon_saving_g": 400.0,
+    "peak_slots_avoided": 2
+  },
+  "api_request": {
+    "region_id": "london",
+    "tariff": {
+      "kind": "manual_half_hourly",
+      "prices_p": [10, 10, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 20, 20, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15]
+    },
+    "objective": "cheapest",
+    "tasks": [{
+      "name": "fixture-dishwasher",
+      "device_type": "Fixture dishwasher",
+      "energy_kwh": 2.0,
+      "duration_hours": 1.0,
+      "earliest": "00:00",
+      "latest": "",
+      "preferred": "17:00"
+    }]
+  },
+  "carbon_g_per_kwh": [100, 100, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 300, 300, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
+}
