@@ -32,6 +32,19 @@ carbon_forecast_curve  ──►  daily_schedule  ──►  action_report
 
 `daily_optimisation_run` — `30 5 * * *` Europe/London, to plan the coming day.
 
+Nothing hosts this. There is no Dagster deployment, so no daemon evaluates that cron and
+the schedule has never run on its own; it runs when someone starts `dagster dev` locally
+and materialises the assets. The cron literal is a declaration of intent, not evidence of a
+running service. `default_status` is left unset on purpose — see the comment in
+[`orchestration/schedules.py`](../orchestration/schedules.py) for why pinning it to
+`STOPPED` would imply a live instance that had been switched off.
+
+## Scale
+
+Three assets, one job, one schedule. That is the whole orchestration layer, and it is meant
+to be: the assets are wrappers, and every behaviour worth testing lives in the pipeline core
+where it can be tested without a scheduler.
+
 ## Failure handling
 
 Built into the pipeline core, so it holds whether run by Dagster or directly:

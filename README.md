@@ -13,18 +13,65 @@ It is a portfolio demonstration, not a control system or a savings guarantee. Th
 ## What it demonstrates
 
 - A typed Python domain model for tasks, half-hour slots, tariffs, schedules, and baselines.
-- Rule-based and LP/MILP scheduling under time, energy, and overlap constraints.
+- Rule-based and LP/MILP scheduling under time, energy, and overlap constraints. The MILP
+  earns its place through one thing the rule-based path structurally cannot express: a
+  peak-load limit that couples every task in the same half-hour slot.
 - A FastAPI contract that reports the actual carbon and price source, whether it is live, and any fallback reason.
 - A Next.js interface that keeps fallback/sample status visible instead of presenting it as live data.
 - A robustness indicator that describes sensitivity to current inputs. It is a heuristic, not a calibrated probability.
 - Conditional ex-post scenario analysis. Because task adherence is not observed, this is a synthetic stress test rather than realised-savings evidence.
-- Text, Excel, PDF, dbt, Snowflake, Dagster, and Power BI reporting paths.
+- Text, Excel, PDF, dbt, Dagster, and Power BI reporting paths. Snowflake is a bootstrap DDL
+  script ([`warehouse/snowflake_setup.sql`](warehouse/snowflake_setup.sql)) plus a second dbt
+  profile target; nothing in this repository has been built against a live Snowflake account.
+  [Status](docs/STATUS.md) labels the whole warehouse row built-local / synthetic-demo.
 
 Fresh action reports are blocked when optimisation fails or required provenance
 is absent. Deterministic fixture mode (`CEF_FIXTURE_MODE=1`) uses labelled
 synthetic-household inputs for CI and demonstrations; it requires no paid or
 live external API call. All dashboard screenshots and KPIs are illustrative,
 conditional ex-post where applicable, and not a savings guarantee.
+
+## Engineering choices
+
+**The MILP is a real MILP, not a renamed greedy loop.**
+[`optimisation/linear_programming.py`](src/community_energy_flex/optimisation/linear_programming.py)
+builds a `pulp.LpProblem` with one binary variable per (task, feasible start), a
+must-run-once constraint per task, per-task deadlines, and — the reason to reach for an LP at
+all — a peak-load constraint that caps the total kW drawn in any half-hour slot across every
+task at once. The rule-based optimiser schedules each task independently and cannot express
+that coupling. CBC solves it; any non-`Optimal` status raises `InfeasibleScheduleError`
+instead of returning a partial schedule. When the shared limit pushes a task off its
+standalone-best slot, the recommendation caps its robustness and says why. Six dedicated
+tests cover the coupling, the infeasible case, and parity with the rule-based optimiser when
+no shared limit applies. It is a library path under test, not a product surface: the API, the
+Streamlit app, and the daily pipeline all call the rule-based optimiser, and
+[Status](docs/STATUS.md) records the MILP as built-local.
+
+**The public claims are a CI gate.**
+[`tests/test_public_claims.py`](tests/test_public_claims.py) reads the README, case study,
+retro, status, and both public web pages, and fails the build if retired claims reappear or
+if the README stops stating the synthetic-evidence boundary. Marketing copy is the surface
+most likely to drift ahead of the evidence, so it is tested like anything else.
+
+**One enforced data contract.** `fct_daily_savings` sets `contract: enforced: true` with a
+declared `data_type` on all 33 columns, so a renamed column or a changed type fails
+`dbt build` rather than quietly reshaping the Power BI star. Four exposures — FastAPI,
+Next.js, Power BI, and the action report — are declared at `maturity: high`, so the
+downstream blast radius of a model change is in the lineage rather than in someone's head.
+
+**One fixture reconciles four runtimes.**
+[`data/fixtures/reporting_contract_v1.json`](data/fixtures/reporting_contract_v1.json) is
+consumed by the dbt seed generator, the Python tests, the API contract tests, and the Next.js
+client tests. The same reporting shape is therefore asserted in SQL, Python, and TypeScript
+from a single committed source.
+
+**Orchestration is deliberately thin.** Three Dagster assets, one job, one schedule. The
+assets wrap [`pipeline/daily.py`](src/community_energy_flex/pipeline/daily.py) and hold no
+business logic, so the pipeline is unit-tested as plain functions and the scheduler stays
+swappable. See the [Dagster pipeline notes](docs/DAGSTER_PIPELINE.md).
+
+**CI runs the Python suite on 3.11, 3.12, and 3.13**, alongside a typecheck and test pass on
+the Next.js client and a full DuckDB `dbt build` of the reporting contract.
 
 ## Try it
 

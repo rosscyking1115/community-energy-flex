@@ -14,6 +14,10 @@ This ledger defines which public statements the repository can support at the v0
 | Illustrative case-study and dashboard savings are customer outcomes. | Not supported | Synthetic fixtures and generated seeds | Label them synthetic-household demo figures. |
 | Excel and PDF action reports are exportable. | Supported | Report serialisation tests | Optional report dependencies must be installed. |
 | The deployed web and API surfaces are publicly reachable. | Deployment-time claim | Deployment smoke evidence | Recheck at release time; availability is not guaranteed. |
+| The MILP applies a peak-load constraint across tasks that the rule-based optimiser cannot express. | Supported | `optimisation/linear_programming.py` peak-load constraint and `tests/test_linear_programming.py` | A structural claim about the model, never a claim about measured savings. |
+| The dbt reporting fact is a type-enforced contract with declared exposures. | Supported | `contract: enforced: true` and the exposure block in `dbt_energy/models/marts/reporting/_schema.yml` | Quote column and exposure counts only after re-counting from the schema file. |
+| The Snowflake models have been built against a live account. | Not supported | `warehouse/snowflake_setup.sql` and a second dbt profile target are the only Snowflake artefacts | Say bootstrap DDL and profile target; never “running on Snowflake”. |
+| Dagster orchestration is deployed and running on a schedule. | Not supported | `orchestration/` is loadable but has no host; nothing executes `daily_optimisation_run` | Describe orchestration as thin and local; the cron literal is a declaration of intent. |
 
 ## Review rule
 
