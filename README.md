@@ -186,4 +186,12 @@ guarantee. The model, DAX, theme, and reproducible seed path are in
 
 Version 0.2.1 continues the v0.2.0 credibility closeout; it remains a feature-freeze release, with post-release correctness and honesty fixes. Maintenance is limited to correctness, dependency and security updates, and deployment reliability; new research claims require new observed evidence and an explicit scope decision.
 
+**Product development stopped on 2026-07-27.** An evidence scan found the scheduling function
+already served — by statute for EV charging, by supplier-dispatched tariffs, and by free tools
+built on the same two public APIs this project uses. The reasoning and the primary sources are
+recorded in [status](docs/STATUS.md). One strand continues: a
+[forecast-vintage archive](research/forecast_vintages/) capturing what the GB carbon-intensity
+forecast said and when, because that data cannot be recovered afterwards. It is a capture job
+answering a research question, not a product, and it has produced no result yet.
+
 MIT © 2026 Cheng-Yuan King.
