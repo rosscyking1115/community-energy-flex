@@ -3,6 +3,7 @@ in ``community_energy_flex``; this only marshals types."""
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import time
 
 from community_energy_api.carbon import CarbonCurveResult
@@ -72,6 +73,15 @@ def build_tariff(spec: TariffSpec) -> tuple[Tariff, bool]:
 
 
 def build_tasks(specs: list[TaskSpec]) -> list[Task]:
+    """Build domain tasks from the request, rejecting duplicate identities.
+
+    ``task_id`` is derived from the caller-supplied name, and downstream code
+    treats it as a key: the LP optimiser indexes its variables by it and would
+    silently schedule one task where two were asked for, and the response
+    assembler looks scheduled tasks up by it and would report the wrong row.
+    Neither failure is visible in the output, so the collision is rejected here,
+    at the point the identity is derived, rather than tolerated downstream.
+    """
     tasks = []
     for i, s in enumerate(specs):
         tasks.append(
@@ -84,6 +94,12 @@ def build_tasks(specs: list[TaskSpec]) -> list[Task]:
                 latest_finish=_to_slot(s.latest, end=True),
                 preferred_start=_to_slot(s.preferred),
             )
+        )
+    counts = Counter(t.task_id for t in tasks)
+    duplicates = sorted(name for name, count in counts.items() if count > 1)
+    if duplicates:
+        raise ValueError(
+            "task names must be unique; duplicated: " + ", ".join(repr(d) for d in duplicates)
         )
     return tasks
 

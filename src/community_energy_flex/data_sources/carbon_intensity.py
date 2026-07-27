@@ -104,8 +104,17 @@ class CarbonIntensityClient:
         self.base_url = base_url.rstrip("/")
         self._fetch = fetch or get_json
 
-    def national_forecast_48h(self) -> list[CarbonSlot]:
-        return parse_intensity_periods(self._fetch(f"{self.base_url}/intensity/fw48h"))
+    def national_forecast_48h(self, from_dt: datetime | None = None) -> list[CarbonSlot]:
+        """National 48h forecast (96 half-hourly periods).
+
+        The ``{from}`` segment is required. Without it the provider returns HTTP
+        400 - verified against the live API on 2026-07-27, where the keyless
+        ``/intensity/fw48h`` failed and ``/intensity/{from}/fw48h`` returned 96
+        periods. Only the injected-fetch test exercised this before, so the
+        broken URL passed unnoticed.
+        """
+        frm = _forecast_from(from_dt)
+        return parse_intensity_periods(self._fetch(f"{self.base_url}/intensity/{frm}/fw48h"))
 
     def regional_forecast_by_id(
         self, region_id: int, from_dt: datetime | None = None
