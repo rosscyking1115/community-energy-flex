@@ -33,6 +33,10 @@ reports/*.pdf
 # .pbix and screenshots.
 powerbi/data/
 
+# Forecast-vintage archive: local capture output. Non-reproducible going
+# backwards, so it is backed up rather than regenerated - never committed.
+research/forecast_vintages/data/
+
 # Secrets / env
 .env
 *.local
