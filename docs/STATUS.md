@@ -23,8 +23,8 @@ Community Energy Flex is a portfolio decision-support demonstrator for schedulin
 | Text, Excel, and PDF reports | built-local | Serialisation tests; optional report dependencies |
 | dbt/Snowflake/Dagster/Power BI | built-local / synthetic-demo | Reproducible synthetic reporting path, not a connected production warehouse |
 | Smart-meter ingestion and appliance control | designed-not-connected | Explicitly out of scope |
-| Forecast-vintage archive | capturing since 2026-07-27 | Capture job only; no evaluation and no result yet |
-| Forecast-vintage benchmark | planned | Needs enough captured vintages to cover horizons and seasons |
+| Forecast-vintage archive | stopped 2026-07-27 | Ran ~6.5 hours; 10 vintages, 18,240 rows, no gaps. Nothing consumes it, so collection stopped the same day |
+| Forecast-vintage benchmark | planned | Needs a Gate 0 and far more captured vintages than the 10 held |
 
 Python tests cover optimisation, API validation/provenance, fallback behaviour, retro semantics, and report exports. CI also compiles the web client.
 
