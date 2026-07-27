@@ -1,10 +1,15 @@
 # Streamlit theme - matches the Power BI dashboard palette for a consistent
 # product look. Native theming via config (no CSS hacks), per the
 # developing-with-streamlit guidance.
+#
+# font is a CSS font-family value, so it must be hyphenated: "sans serif" was the
+# pre-1.44 enum spelling and is silently ignored by current Streamlit, which falls
+# back to the default font. The app extra pins streamlit>=1.49 for this reason
+# among others; see pyproject.toml.
 [theme]
 base = "light"
 primaryColor = "#1B7A5A"
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F5F7F6"
 textColor = "#2D3748"
-font = "sans serif"
+font = "sans-serif"

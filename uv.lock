@@ -566,14 +566,19 @@ api = [
 app = [
     { name = "streamlit" },
 ]
+archive = [
+    { name = "pyarrow" },
+]
 dev = [
     { name = "fastapi" },
     { name = "httpx" },
     { name = "openpyxl" },
     { name = "pulp" },
+    { name = "pyarrow" },
     { name = "pytest" },
     { name = "reportlab" },
     { name = "ruff" },
+    { name = "streamlit" },
 ]
 optim = [
     { name = "pulp" },
@@ -612,15 +617,18 @@ requires-dist = [
     { name = "openpyxl", marker = "extra == 'reports'", specifier = ">=3.1" },
     { name = "pulp", marker = "extra == 'dev'", specifier = ">=2.7" },
     { name = "pulp", marker = "extra == 'optim'", specifier = ">=2.7" },
+    { name = "pyarrow", marker = "extra == 'archive'", specifier = ">=15" },
+    { name = "pyarrow", marker = "extra == 'dev'", specifier = ">=15" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "reportlab", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "reportlab", marker = "extra == 'reports'", specifier = ">=4.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.5" },
-    { name = "streamlit", marker = "extra == 'app'", specifier = ">=1.36" },
+    { name = "streamlit", marker = "extra == 'app'", specifier = ">=1.49" },
+    { name = "streamlit", marker = "extra == 'dev'", specifier = ">=1.49" },
     { name = "tzdata", marker = "sys_platform == 'win32'", specifier = ">=2025.2" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'api'", specifier = ">=0.29" },
 ]
-provides-extras = ["app", "reports", "warehouse", "snowflake", "orchestration", "optim", "tracking", "api", "dev"]
+provides-extras = ["app", "reports", "warehouse", "snowflake", "orchestration", "optim", "tracking", "archive", "api", "dev"]
 
 [[package]]
 name = "contourpy"

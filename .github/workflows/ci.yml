@@ -54,6 +54,26 @@ jobs:
       - name: Test
         run: npm test
 
+  # Dagster is ~50 extra packages with tight pins, and the assets it wraps are not
+  # Python-version sensitive, so it gets one job rather than a place in the matrix.
+  # Without this the orchestration tests skip everywhere and nothing says so.
+  orchestration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install (dev + orchestration)
+        run: python -m pip install -e ".[dev,orchestration]"
+
+      - name: Test Dagster assets and the publication guard
+        run: python -m pytest tests/test_dagster_publication_guard.py
+
   dbt-fixture:
     runs-on: ubuntu-latest
     env:

@@ -14,14 +14,25 @@ keywords = ["energy", "carbon", "flexibility", "demand-response", "optimisation"
 dependencies = ["tzdata>=2025.2; platform_system == 'Windows'"]
 
 [project.optional-dependencies]
-app = ["streamlit>=1.36"]
+# 1.49 is the measured floor, not a guess. st.dataframe/st.data_editor only accept
+# width="stretch" from 1.49.0 (1.48.0 raises TypeError: 'str' object cannot be
+# interpreted as an integer), and theme.font only takes the CSS value "sans-serif"
+# from 1.44.0, where it replaced the old "sans serif" enum.
+app = ["streamlit>=1.49"]
 reports = ["openpyxl>=3.1", "reportlab>=4.0"]
 warehouse = ["dbt-duckdb>=1.7", "duckdb>=0.10"]
 snowflake = ["dbt-snowflake>=1.7"]
 orchestration = ["dagster>=1.7", "dagster-webserver>=1.7"]
 optim = ["pulp>=2.7"]
 tracking = ["mlflow>=2.9"]
+# research/forecast_vintages only. Not part of the product surface.
+archive = ["pyarrow>=15"]
 api = ["fastapi>=0.110", "uvicorn[standard]>=0.29"]
+# Mirrors every optional runtime path so CI actually exercises them rather than
+# skipping past them: optim, api, reports, app and archive. Orchestration is the
+# deliberate exception - dagster is ~50 packages with tight pins and its assets
+# are not Python-version sensitive, so the CI "orchestration" job installs it
+# once instead of adding it to every matrix leg.
 dev = [
     "pytest>=8.0",
     "ruff>=0.5",
@@ -30,13 +41,17 @@ dev = [
     "fastapi>=0.110",
     "openpyxl>=3.1",
     "reportlab>=4.0",
+    "streamlit>=1.49",
+    "pyarrow>=15",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "api"]
+# "." makes research/ importable without depending on the invocation's cwd; it is
+# a repo-local script package, deliberately not shipped in the wheel.
+pythonpath = ["src", "api", "."]
 testpaths = ["tests", "api/tests"]
 addopts = "-q"
 

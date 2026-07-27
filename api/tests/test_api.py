@@ -64,6 +64,41 @@ def test_optimise_returns_a_schedule():
     assert "planning recommendations only" in data["safety_statement"]
 
 
+def test_duplicate_task_names_are_rejected():
+    """Two tasks sharing a name collide on ``task_id``, which downstream code uses
+    as a key. Rejecting it beats scheduling one task where two were asked for."""
+    body = {
+        "region_id": "south-west-england",
+        "tariff": {"kind": "economy7", "day_rate_p": 32.0, "night_rate_p": 14.0},
+        "tasks": [
+            {"name": "Washing", "device_type": "Washing machine", "energy_kwh": 0.9,
+             "duration_hours": 1.5, "latest": "07:00"},
+            {"name": "Washing", "device_type": "Washing machine", "energy_kwh": 0.9,
+             "duration_hours": 1.5, "latest": "23:00"},
+        ],
+    }
+    resp = client.post("/v1/optimise", json=body)
+    assert resp.status_code == 422
+    assert "unique" in resp.json()["detail"]
+    assert "'Washing'" in resp.json()["detail"]
+
+
+def test_distinct_task_names_still_schedule_every_task():
+    body = {
+        "region_id": "south-west-england",
+        "tariff": {"kind": "economy7", "day_rate_p": 32.0, "night_rate_p": 14.0},
+        "tasks": [
+            {"name": "Washing", "device_type": "Washing machine", "energy_kwh": 0.9,
+             "duration_hours": 1.5, "latest": "07:00"},
+            {"name": "Washing (second load)", "device_type": "Washing machine",
+             "energy_kwh": 0.9, "duration_hours": 1.5, "latest": "23:00"},
+        ],
+    }
+    resp = client.post("/v1/optimise", json=body)
+    assert resp.status_code == 200
+    assert len(resp.json()["tasks"]) == 2
+
+
 def test_agile_endpoint_gb_and_ni():
     gb = client.get("/v1/tariffs/agile/london")
     assert gb.status_code == 200
