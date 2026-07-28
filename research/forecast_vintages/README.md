@@ -199,14 +199,23 @@ present; the manifest grows and is always refreshed) and **additive only** — i
 never deletes at the destination, because a bug in a backup tool should not be able
 to destroy the one thing that cannot be recreated.
 
-**Known gap: OneDrive is sync, not versioned backup.** It protects against losing
-this machine. It does not protect against corruption, because a corrupted local file
-syncs upward and overwrites the good copy — the failure propagates rather than being
-contained. Parquet files here are immutable once written, which narrows the exposure
-to the manifest and to disk-level corruption, but it does not remove it. A versioned,
-off-site path (restic to Backblaze B2) is the decided answer and is blocked on
-credentials; until it exists, this archive has one unversioned copy. Do not build a
-third mechanism in the meantime.
+**OneDrive is sync, not versioned backup.** It protects against losing this machine.
+It does not protect against corruption, because a corrupted local file syncs upward
+and overwrites the good copy — the failure propagates rather than being contained.
+Parquet files here are immutable once written, which narrows the exposure to the
+manifest and to disk-level corruption, but it does not remove it.
+
+The versioned copy is elsewhere. An encrypted, versioned, off-site **restic**
+repository exists and is verified: `b2:ross-files-backup:files-backup` on Backblaze
+B2, restic 0.19.0, 12 snapshots, 41.6 GiB, with backup, prune and check all clean on
+its last successful run and `check` reporting no errors found. **Verified 2026-07-23;
+recorded here 2026-07-28.** The OneDrive mirror is therefore a second, unversioned
+copy rather than the only one.
+
+Do not build a third mechanism. If either of the two above appears to be missing,
+check whether it has merely stopped running before concluding it does not exist — and
+re-date this paragraph when you check, because a backup claim with no verification
+date is the failure mode that put a false statement here in the first place.
 
 ## What this does not do
 
