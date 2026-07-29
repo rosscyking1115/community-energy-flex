@@ -155,7 +155,8 @@ Nothing is scheduled. To restart on this machine — read
 for half-hourly:
 
 ```powershell
-$repo = 'C:\dev\portfolio\community-energy-flex'
+# Run from anywhere inside the repository; the root is derived, not hard-coded.
+$repo = (Resolve-Path (git rev-parse --show-toplevel)).Path
 $action = New-ScheduledTaskAction -Execute (Join-Path $repo '.venv\Scripts\python.exe') `
   -Argument '-m research.forecast_vintages.capture' -WorkingDirectory $repo
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) `
